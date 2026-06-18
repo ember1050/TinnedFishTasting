@@ -49,6 +49,12 @@ export default function RootLayout({
                 Tastings
               </Link>
               <Link
+                href="/profile"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Profile
+              </Link>
+              <Link
                 href="/auth/login"
                 className="text-sm font-medium text-gray-700 hover:text-gray-900"
               >
