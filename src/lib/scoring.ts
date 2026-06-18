@@ -1,0 +1,81 @@
+import type { FishWithStats } from "./types";
+
+/**
+ * Calculates a Bayesian-weighted average to prevent fish with very few
+ * reviews from dominating the rankings. Uses the global mean and a
+ * confidence threshold (minimum votes before the score is trustworthy).
+ */
+export function bayesianAverage(
+  itemAvg: number,
+  itemCount: number,
+  globalAvg: number,
+  confidenceThreshold: number = 5
+): number {
+  return (
+    (confidenceThreshold * globalAvg + itemCount * itemAvg) /
+    (confidenceThreshold + itemCount)
+  );
+}
+
+/**
+ * Compute a "value score" — protein per dollar, normalized to 0-10.
+ * Higher is better (more protein per dollar spent).
+ */
+export function computeValueMetric(fish: {
+  protein_g: number;
+  price_usd: number;
+}): number {
+  if (fish.price_usd <= 0) return 0;
+  const proteinPerDollar = fish.protein_g / fish.price_usd;
+  // Typical range: 2-15g protein per dollar for tinned fish
+  // Normalize to 0-10 scale with 15g/$1 = 10
+  return Math.min(10, Math.round((proteinPerDollar / 15) * 10 * 10) / 10);
+}
+
+/**
+ * Sort fish by ranking score (Bayesian average of overall_score).
+ */
+export function rankFish(
+  fish: FishWithStats[],
+  globalAvg: number
+): FishWithStats[] {
+  return [...fish].sort((a, b) => {
+    const scoreA = a.avg_overall
+      ? bayesianAverage(a.avg_overall, a.review_count, globalAvg)
+      : 0;
+    const scoreB = b.avg_overall
+      ? bayesianAverage(b.avg_overall, b.review_count, globalAvg)
+      : 0;
+    return scoreB - scoreA;
+  });
+}
+
+/**
+ * Calculate guess accuracy for a tasting participant.
+ * Primary correct = 2 points, alternate correct = 1 point.
+ */
+export function calculateGuessScore(
+  responses: { blind_number: number; guess_primary: string | null; guess_alternate: string | null }[],
+  correctMapping: Map<number, string> // blind_number → fish_id
+): { total: number; max: number; primaryCorrect: number; alternateCorrect: number } {
+  let primaryCorrect = 0;
+  let alternateCorrect = 0;
+
+  for (const r of responses) {
+    const correctFishId = correctMapping.get(r.blind_number);
+    if (!correctFishId) continue;
+
+    if (r.guess_primary === correctFishId) {
+      primaryCorrect++;
+    } else if (r.guess_alternate === correctFishId) {
+      alternateCorrect++;
+    }
+  }
+
+  return {
+    total: primaryCorrect * 2 + alternateCorrect * 1,
+    max: responses.length * 2,
+    primaryCorrect,
+    alternateCorrect,
+  };
+}
