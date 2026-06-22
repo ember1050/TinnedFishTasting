@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMockFishById, getMockReviewsForFish, getMockFishWithStats } from "@/lib/mock-data";
+import { getFishById, getReviewsForFish, getAllFishWithStats } from "@/lib/data";
 import { computeValueMetric } from "@/lib/scoring";
 
 export default async function FishDetailPage({
@@ -9,14 +9,15 @@ export default async function FishDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const fish = getMockFishById(id);
+  const fish = await getFishById(id);
 
   if (!fish) {
     notFound();
   }
 
-  const reviews = getMockReviewsForFish(id);
-  const stats = getMockFishWithStats().find((f) => f.id === id)!;
+  const reviews = await getReviewsForFish(id);
+  const allStats = await getAllFishWithStats();
+  const stats = allStats.find((f) => f.id === id);
   const proteinPerDollar = (fish.protein_g / fish.price_usd).toFixed(1);
   const calPerGram = (fish.calories / fish.weight_g).toFixed(2);
 
@@ -47,7 +48,7 @@ export default async function FishDetailPage({
           )}
 
           {/* Score badge */}
-          {stats.avg_overall !== null && (
+          {stats?.avg_overall !== null && stats?.avg_overall !== undefined && (
             <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full mb-6">
               <span className="text-2xl font-bold text-blue-700">
                 {stats.avg_overall.toFixed(1)}
@@ -99,7 +100,7 @@ export default async function FishDetailPage({
       </div>
 
       {/* Rating breakdown */}
-      {stats.avg_overall !== null && (
+      {stats?.avg_overall !== null && stats?.avg_overall !== undefined && (
         <section className="mb-12">
           <h2 className="text-xl font-bold mb-4">Rating Breakdown</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -118,11 +119,11 @@ export default async function FishDetailPage({
                   {value?.toFixed(1) ?? "—"}
                 </div>
                 <div className="text-sm text-gray-500 mt-1">{label}</div>
-                {value !== null && (
+                {value !== null && value !== undefined && (
                   <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${(value! / 10) * 100}%` }}
+                      style={{ width: `${(value / 10) * 100}%` }}
                     />
                   </div>
                 )}

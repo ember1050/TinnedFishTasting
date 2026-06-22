@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { getMockFishWithStats } from "@/lib/mock-data";
+import { getAllFishWithStats } from "@/lib/data";
 import { rankFish, computeValueMetric } from "@/lib/scoring";
 
-export default function Home() {
-  const allFish = getMockFishWithStats();
+export default async function Home() {
+  const allFish = await getAllFishWithStats();
   const reviewed = allFish.filter((f) => f.avg_overall !== null);
   const globalAvg =
-    reviewed.reduce((sum, f) => sum + f.avg_overall!, 0) / reviewed.length;
+    reviewed.length > 0
+      ? reviewed.reduce((sum, f) => sum + f.avg_overall!, 0) / reviewed.length
+      : 5;
   const ranked = rankFish(allFish, globalAvg).slice(0, 5);
 
   return (
@@ -67,7 +69,7 @@ export default function Home() {
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-blue-700">
-                    {fish.avg_overall?.toFixed(1)}
+                    {fish.avg_overall?.toFixed(1) ?? "—"}
                   </div>
                   <div className="text-xs text-gray-400">
                     {fish.review_count} review{fish.review_count !== 1 && "s"}

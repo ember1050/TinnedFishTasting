@@ -1,9 +1,9 @@
-import { getMockFishWithStats } from "@/lib/mock-data";
-import { rankFish, computeValueMetric } from "@/lib/scoring";
+import { getAllFishWithStats } from "@/lib/data";
+import { rankFish } from "@/lib/scoring";
 import { FishTable } from "@/components/FishTable";
 
-export default function FishListPage() {
-  const allFish = getMockFishWithStats();
+export default async function FishListPage() {
+  const allFish = await getAllFishWithStats();
   const reviewed = allFish.filter((f) => f.avg_overall !== null);
   const globalAvg =
     reviewed.length > 0
