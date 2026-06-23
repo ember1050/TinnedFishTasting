@@ -3,6 +3,27 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+async function uploadFishImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  fishId: string,
+  file: File
+): Promise<string | null> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${fishId}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("fish-images")
+    .upload(path, file, { upsert: true, contentType: file.type });
+
+  if (error) {
+    console.error("Image upload error:", error.message);
+    return null;
+  }
+
+  const { data } = supabase.storage.from("fish-images").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function createFish(formData: FormData) {
   const supabase = await createClient();
 
@@ -41,7 +62,7 @@ export async function createFish(formData: FormData) {
     return { error: "Required fields: name, brand, type, price, weight, calories, protein." };
   }
 
-  const { error } = await supabase.from("fish").insert({
+  const { data: inserted, error } = await supabase.from("fish").insert({
     name,
     brand,
     fish_type,
@@ -53,10 +74,19 @@ export async function createFish(formData: FormData) {
     sodium_mg,
     description,
     sourcing_notes,
-  });
+  }).select("id").single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Handle image upload if provided
+  const imageFile = formData.get("image") as File | null;
+  if (imageFile && imageFile.size > 0) {
+    const imageUrl = await uploadFishImage(supabase, inserted.id, imageFile);
+    if (imageUrl) {
+      await supabase.from("fish").update({ image_url: imageUrl }).eq("id", inserted.id);
+    }
   }
 
   redirect("/fish");
@@ -99,6 +129,14 @@ export async function updateFish(fishId: string, formData: FormData) {
     return { error: "Required fields: name, brand, type, price, weight, calories, protein." };
   }
 
+  // Handle image upload if provided
+  const imageFile = formData.get("image") as File | null;
+  let image_url: string | undefined;
+  if (imageFile && imageFile.size > 0) {
+    const url = await uploadFishImage(supabase, fishId, imageFile);
+    if (url) image_url = url;
+  }
+
   const { error } = await supabase
     .from("fish")
     .update({
@@ -113,6 +151,7 @@ export async function updateFish(fishId: string, formData: FormData) {
       sodium_mg,
       description,
       sourcing_notes,
+      ...(image_url ? { image_url } : {}),
     })
     .eq("id", fishId);
 

@@ -19,6 +19,7 @@ interface FishData {
   sodium_mg: number | null;
   description: string | null;
   sourcing_notes: string | null;
+  image_url: string | null;
 }
 
 export default function AdminFishEditPage({
@@ -258,9 +259,28 @@ export default function AdminFishEditPage({
           />
         </div>
 
-        {/* TODO: Image upload — needs Supabase Storage bucket setup */}
-        <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-400">
-          <p className="text-sm">📷 Image upload coming soon</p>
+        {/* Image upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Product Image
+          </label>
+          {fish.image_url && (
+            <div className="mb-3">
+              <img
+                src={fish.image_url}
+                alt={fish.name}
+                className="w-32 h-32 object-cover rounded-lg border"
+              />
+              <p className="text-xs text-gray-400 mt-1">Current image</p>
+            </div>
+          )}
+          <input
+            name="image"
+            type="file"
+            accept="image/*"
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          <p className="text-xs text-gray-400 mt-1">Upload a new image to replace the current one</p>
         </div>
 
         <div className="pt-4 border-t flex gap-3">

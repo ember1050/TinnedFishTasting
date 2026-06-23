@@ -36,11 +36,19 @@ export default async function FishDetailPage({
 
       {/* Hero section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-center text-gray-400">
-            <div className="text-6xl mb-2">🐟</div>
-            <p className="text-sm">Product image</p>
-          </div>
+        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+          {fish.image_url ? (
+            <img
+              src={fish.image_url}
+              alt={fish.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="text-center text-gray-400">
+              <div className="text-6xl mb-2">🐟</div>
+              <p className="text-sm">No image yet</p>
+            </div>
+          )}
         </div>
         <div>
           <div className="flex items-center gap-3 mb-1">
