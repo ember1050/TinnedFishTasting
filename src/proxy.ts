@@ -32,9 +32,10 @@ export async function proxy(request: NextRequest) {
 
   // Protect routes that require auth
   const protectedPaths = ["/profile", "/tastings/new"];
-  const isProtected = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  const isProtected =
+    protectedPaths.some((path) =>
+      request.nextUrl.pathname.startsWith(path)
+    ) || request.nextUrl.pathname.match(/^\/fish\/[^/]+\/review$/);
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
