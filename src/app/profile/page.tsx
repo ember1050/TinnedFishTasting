@@ -1,52 +1,45 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-/**
- * User profile page — shows account info, review history, tasting history.
- *
- * TODO: Wire to Supabase auth and profile data.
- * TODO: Add "fish completion table" (reach goal) showing which fish
- * the user has/hasn't reviewed.
- */
-export default function ProfilePage() {
-  // Mock user data
-  const user = {
-    name: "FishFan42",
-    email: "fishfan@example.com",
-    memberSince: "January 2026",
-    reviewCount: 12,
-    tastingsAttended: 3,
-  };
+export default async function ProfilePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const recentReviews = [
-    {
-      id: "r1",
-      fishName: "Wild Planet Sardines in EVOO",
-      score: 8,
-      date: "May 10, 2026",
-      isTasting: true,
-    },
-    {
-      id: "r3",
-      fishName: "Ortiz Tuna Fillets",
-      score: 9,
-      date: "May 10, 2026",
-      isTasting: true,
-    },
-    {
-      id: "r7",
-      fishName: "Ortiz Anchovies",
-      score: 9,
-      date: "May 10, 2026",
-      isTasting: true,
-    },
-    {
-      id: "r10",
-      fishName: "Patagonia Smoked Mussels",
-      score: 8,
-      date: "Jun 1, 2026",
-      isTasting: false,
-    },
-  ];
+  if (!user) {
+    redirect("/auth/login");
+  }
+
+  // Fetch profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url, is_admin, created_at")
+    .eq("id", user.id)
+    .single();
+
+  // Fetch user's reviews with fish name
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name)")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  // Fetch tastings the user participated in
+  const { data: participations } = await supabase
+    .from("tasting_participants")
+    .select("tasting_id")
+    .eq("user_id", user.id);
+
+  const reviewCount = reviews?.length ?? 0;
+  const tastingCount = participations?.length ?? 0;
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "Unknown";
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
@@ -59,63 +52,84 @@ export default function ProfilePage() {
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl mb-4">
               🐟
             </div>
-            <h2 className="text-xl font-bold">{user.name}</h2>
+            <h2 className="text-xl font-bold">
+              {profile?.display_name ?? "User"}
+            </h2>
             <p className="text-sm text-gray-500">{user.email}</p>
             <p className="text-xs text-gray-400 mt-1">
-              Member since {user.memberSince}
+              Member since {memberSince}
             </p>
+            {profile?.is_admin && (
+              <span className="inline-block mt-2 text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                Admin
+              </span>
+            )}
 
             <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
               <div>
-                <div className="text-2xl font-bold">{user.reviewCount}</div>
+                <div className="text-2xl font-bold">{reviewCount}</div>
                 <div className="text-xs text-gray-500">Reviews</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">
-                  {user.tastingsAttended}
-                </div>
+                <div className="text-2xl font-bold">{tastingCount}</div>
                 <div className="text-xs text-gray-500">Tastings</div>
               </div>
             </div>
-
-            <button className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700 underline">
-              Edit Profile
-            </button>
           </div>
         </div>
 
         {/* Reviews & Activity */}
         <div className="md:col-span-2">
           <h2 className="text-xl font-bold mb-4">My Reviews</h2>
-          <div className="border rounded-lg divide-y">
-            {recentReviews.map((review) => (
-              <div
-                key={review.id}
-                className="flex items-center justify-between px-4 py-3"
+          {reviewCount === 0 ? (
+            <div className="border rounded-lg p-6 text-center text-gray-400">
+              <p>No reviews yet.</p>
+              <Link
+                href="/fish"
+                className="text-sm text-blue-600 hover:underline mt-2 inline-block"
               >
-                <div>
-                  <Link
-                    href={`/fish/${review.id}`}
-                    className="text-sm font-medium text-blue-600 hover:underline"
+                Browse fish to leave your first review →
+              </Link>
+            </div>
+          ) : (
+            <div className="border rounded-lg divide-y">
+              {reviews!.map((review) => {
+                const fish = review.fish as unknown as {
+                  id: string;
+                  name: string;
+                } | null;
+                return (
+                  <div
+                    key={review.id}
+                    className="flex items-center justify-between px-4 py-3"
                   >
-                    {review.fishName}
-                  </Link>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-400">{review.date}</span>
-                    {review.isTasting && (
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-                        Tasting
-                      </span>
-                    )}
+                    <div>
+                      <Link
+                        href={`/fish/${fish?.id ?? ""}`}
+                        className="text-sm font-medium text-blue-600 hover:underline"
+                      >
+                        {fish?.name ?? "Unknown fish"}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-gray-400">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </span>
+                        {review.is_from_tasting && (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                            Tasting
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-lg font-bold">
+                      {review.overall_score}
+                      <span className="text-sm text-gray-400">/10</span>
+                    </span>
                   </div>
-                </div>
-                <span className="text-lg font-bold">
-                  {review.score}
-                  <span className="text-sm text-gray-400">/10</span>
-                </span>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Reach goal placeholder */}
           <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -123,8 +137,8 @@ export default function ProfilePage() {
               🎯 Fish Completion Tracker (Coming Soon)
             </h3>
             <p className="text-xs text-gray-400">
-              See which fish from the catalog you&apos;ve reviewed and which ones are
-              still waiting for your verdict.
+              See which fish from the catalog you&apos;ve reviewed and which ones
+              are still waiting for your verdict.
             </p>
           </div>
         </div>
