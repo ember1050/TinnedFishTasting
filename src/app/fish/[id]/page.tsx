@@ -10,7 +10,7 @@ export default async function FishDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [fish, { isAdmin }] = await Promise.all([
+  const [fish, { isAdmin, userId }] = await Promise.all([
     getFishById(id),
     getAdminStatus(),
   ]);
@@ -160,6 +160,33 @@ export default async function FishDetailPage({
         <h2 className="text-xl font-bold mb-4">
           Reviews ({reviews.length})
         </h2>
+
+        {/* Review CTA */}
+        {userId ? (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
+            <p className="text-sm text-blue-800">
+              Tried this fish? Share your thoughts!
+            </p>
+            <Link
+              href={`/fish/${id}/review`}
+              className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              Leave a Review
+            </Link>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Log in to leave a review for this fish.
+            </p>
+            <Link
+              href="/auth/login"
+              className="rounded-md bg-gray-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Log In
+            </Link>
+          </div>
+        )}
         {reviews.length === 0 ? (
           <p className="text-gray-500">
             No reviews yet. Be the first to rate this fish!
