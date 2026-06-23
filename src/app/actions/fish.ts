@@ -59,7 +59,68 @@ export async function createFish(formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/admin/fish");
+  redirect("/fish");
+}
+
+export async function updateFish(fishId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be logged in." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) {
+    return { error: "Admin access required." };
+  }
+
+  const name = formData.get("name") as string;
+  const brand = formData.get("brand") as string;
+  const fish_type = formData.get("fish_type") as string;
+  const price_usd = parseFloat(formData.get("price_usd") as string);
+  const weight_g = parseFloat(formData.get("weight_g") as string);
+  const calories = parseFloat(formData.get("calories") as string);
+  const protein_g = parseFloat(formData.get("protein_g") as string);
+  const fat_g = formData.get("fat_g") ? parseFloat(formData.get("fat_g") as string) : null;
+  const sodium_mg = formData.get("sodium_mg") ? parseFloat(formData.get("sodium_mg") as string) : null;
+  const description = (formData.get("description") as string) || null;
+  const sourcing_notes = (formData.get("sourcing_notes") as string) || null;
+
+  if (!name || !brand || !fish_type || !price_usd || !weight_g || !calories || !protein_g) {
+    return { error: "Required fields: name, brand, type, price, weight, calories, protein." };
+  }
+
+  const { error } = await supabase
+    .from("fish")
+    .update({
+      name,
+      brand,
+      fish_type,
+      price_usd,
+      weight_g,
+      calories,
+      protein_g,
+      fat_g,
+      sodium_mg,
+      description,
+      sourcing_notes,
+    })
+    .eq("id", fishId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect(`/fish/${fishId}`);
 }
 
 export async function submitReview(formData: FormData) {

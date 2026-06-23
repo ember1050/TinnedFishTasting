@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getFishById, getReviewsForFish, getAllFishWithStats } from "@/lib/data";
 import { computeValueMetric } from "@/lib/scoring";
+import { getAdminStatus } from "@/lib/auth-helpers";
 
 export default async function FishDetailPage({
   params,
@@ -9,7 +10,10 @@ export default async function FishDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const fish = await getFishById(id);
+  const [fish, { isAdmin }] = await Promise.all([
+    getFishById(id),
+    getAdminStatus(),
+  ]);
 
   if (!fish) {
     notFound();
@@ -39,7 +43,17 @@ export default async function FishDetailPage({
           </div>
         </div>
         <div>
-          <h1 className="text-3xl font-bold mb-1">{fish.name}</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold">{fish.name}</h1>
+            {isAdmin && (
+              <Link
+                href={`/admin/fish/${id}/edit`}
+                className="rounded-md bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              >
+                Edit
+              </Link>
+            )}
+          </div>
           <p className="text-lg text-gray-600 mb-1">
             {fish.brand} • <span className="capitalize">{fish.fish_type}</span>
           </p>
