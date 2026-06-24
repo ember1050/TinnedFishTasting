@@ -17,6 +17,7 @@ interface FishData {
   protein_g: number;
   fat_g: number | null;
   sodium_mg: number | null;
+  salt_level: string;
   description: string | null;
   sourcing_notes: string | null;
   image_url: string | null;
@@ -233,6 +234,24 @@ export default function AdminFishEditPage({
             defaultValue={fish.sodium_mg ?? ""}
             className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Salt Level
+          </label>
+          <select
+            name="salt_level"
+            defaultValue={fish.salt_level ?? "salted"}
+            className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="salted">Salted (default)</option>
+            <option value="low_sodium">Low sodium</option>
+            <option value="no_salt">No salt</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Kept out of the product name; only low-sodium / no-salt are badged.
+          </p>
         </div>
 
         <div>

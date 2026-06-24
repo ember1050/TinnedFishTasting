@@ -13,6 +13,8 @@ export type FishType =
   | "squid"
   | "other";
 
+export type SaltLevel = "salted" | "low_sodium" | "no_salt";
+
 export interface Fish {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface Fish {
   protein_g: number;
   fat_g: number | null;
   sodium_mg: number | null;
+  salt_level: SaltLevel;
   price_usd: number;
   image_url: string | null;
   description: string | null;

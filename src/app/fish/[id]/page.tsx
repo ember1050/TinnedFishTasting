@@ -73,6 +73,11 @@ export default async function FishDetailPage({
             >
               {fish.fish_type}
             </span>
+            {fish.salt_level !== "salted" && (
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                {fish.salt_level === "no_salt" ? "No salt" : "Low sodium"}
+              </span>
+            )}
           </p>
           {fish.description && (
             <p className="text-sm text-gray-500 mb-4">{fish.description}</p>

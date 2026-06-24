@@ -167,6 +167,24 @@ export default function AdminFishEditPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
+            Salt Level
+          </label>
+          <select
+            name="salt_level"
+            defaultValue="salted"
+            className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="salted">Salted (default)</option>
+            <option value="low_sodium">Low sodium</option>
+            <option value="no_salt">No salt</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Kept out of the product name; only low-sodium / no-salt are badged.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea

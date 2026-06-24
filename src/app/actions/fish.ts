@@ -124,6 +124,7 @@ export async function createFish(formData: FormData) {
   const protein_g = parseFloat(formData.get("protein_g") as string);
   const fat_g = formData.get("fat_g") ? parseFloat(formData.get("fat_g") as string) : null;
   const sodium_mg = formData.get("sodium_mg") ? parseFloat(formData.get("sodium_mg") as string) : null;
+  const salt_level = (formData.get("salt_level") as string) || "salted";
   const description = (formData.get("description") as string) || null;
   const sourcing_notes = (formData.get("sourcing_notes") as string) || null;
 
@@ -148,6 +149,7 @@ export async function createFish(formData: FormData) {
     protein_g,
     fat_g,
     sodium_mg,
+    salt_level,
     description,
     sourcing_notes,
     image_url,
@@ -190,6 +192,7 @@ export async function updateFish(fishId: string, formData: FormData) {
   const protein_g = parseFloat(formData.get("protein_g") as string);
   const fat_g = formData.get("fat_g") ? parseFloat(formData.get("fat_g") as string) : null;
   const sodium_mg = formData.get("sodium_mg") ? parseFloat(formData.get("sodium_mg") as string) : null;
+  const salt_level = (formData.get("salt_level") as string) || "salted";
   const description = (formData.get("description") as string) || null;
   const sourcing_notes = (formData.get("sourcing_notes") as string) || null;
 
@@ -225,6 +228,7 @@ export async function updateFish(fishId: string, formData: FormData) {
       protein_g,
       fat_g,
       sodium_mg,
+      salt_level,
       description,
       sourcing_notes,
       ...(image_url ? { image_url } : {}),
