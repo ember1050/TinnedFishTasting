@@ -147,7 +147,7 @@ export default async function FishDetailPage({
               <dd className="font-medium">{gramsPerDollar}g/$</dd>
               <dt
                 className="text-gray-500 font-medium"
-                title="Blends protein-per-dollar and grams-per-dollar"
+                title="Geometric mean of protein-per-dollar and grams-per-dollar, scaled to 0–10"
               >
                 Value Score
               </dt>

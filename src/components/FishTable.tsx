@@ -171,7 +171,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
               <SortHeader
                 label="Value"
                 field="value"
-                hint="The average of two 0–10 scores — protein-per-dollar and grams-per-dollar — so it rewards both nutrition and quantity."
+                hint="Geometric mean of protein-per-dollar and grams-per-dollar, scaled to 0–10."
               />
             </tr>
           </thead>
@@ -233,9 +233,8 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
       </div>
 
       <p className="mt-4 text-xs text-gray-400">
-        Value is the average of two 0–10 scores — protein-per-dollar and
-        food-per-dollar — so it rewards both nutrition and quantity. Click
-        column headers to sort.
+        Value is the geometric mean of protein-per-dollar and grams-per-dollar,
+        scaled to 0–10.
       </p>
     </>
   );

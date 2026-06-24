@@ -18,16 +18,20 @@ export function bayesianAverage(
 }
 
 /**
- * Compute a "value score" on a 0-10 scale by combining two notions of value:
- *   - protein per dollar  (nutritional efficiency)
- *   - grams per dollar     (sheer quantity of food)
- * Each component is normalized to 0-10 against a reference rate, then blended
- * with the weights below. Higher is better. Weights/refs are tunable.
+ * Value score (0–10): the geometric mean of two "per dollar" rates —
+ * protein per dollar and drained grams per dollar.
+ *
+ *   geometric mean = sqrt( (protein/price) × (weight/price) )
+ *                  = sqrt(protein_g × weight_g) / price_usd
+ *
+ * The geometric mean is the statistically appropriate average for ratios:
+ * unlike the previous arithmetic blend it has no arbitrary per-factor anchors,
+ * penalizes imbalance between the two rates, and doesn't clamp/flatten the top
+ * of the ranking. The raw composite is divided by VALUE_REF — the best value in
+ * the current 45-item catalog (~29.7), rounded to 30 — to map onto a 0–10 scale.
+ * Recalibrate VALUE_REF if the catalog's price/nutrition spread shifts.
  */
-const PROTEIN_PER_DOLLAR_REF = 15; // g protein per $1 that scores a 10
-const GRAMS_PER_DOLLAR_REF = 50; // g drained weight per $1 that scores a 10
-const PROTEIN_WEIGHT = 0.5;
-const QUANTITY_WEIGHT = 0.5;
+const VALUE_REF = 30;
 
 export function computeValueMetric(fish: {
   protein_g: number;
@@ -35,19 +39,9 @@ export function computeValueMetric(fish: {
   price_usd: number;
 }): number {
   if (fish.price_usd <= 0) return 0;
-
-  const proteinScore = Math.min(
-    10,
-    (fish.protein_g / fish.price_usd / PROTEIN_PER_DOLLAR_REF) * 10
-  );
-  const quantityScore = Math.min(
-    10,
-    (fish.weight_g / fish.price_usd / GRAMS_PER_DOLLAR_REF) * 10
-  );
-
-  const combined =
-    PROTEIN_WEIGHT * proteinScore + QUANTITY_WEIGHT * quantityScore;
-  return Math.round(combined * 10) / 10;
+  const composite = Math.sqrt(fish.protein_g * fish.weight_g) / fish.price_usd;
+  const scaled = (composite / VALUE_REF) * 10;
+  return Math.min(10, Math.round(scaled * 10) / 10);
 }
 
 /**
