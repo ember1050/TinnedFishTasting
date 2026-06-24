@@ -269,7 +269,7 @@ export default function AdminFishEditPage({
               <img
                 src={fish.image_url}
                 alt={fish.name}
-                className="w-32 h-32 object-cover rounded-lg border"
+                className="w-32 h-32 object-contain bg-white rounded-lg border p-1"
               />
               <p className="text-xs text-gray-400 mt-1">Current image</p>
             </div>
