@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/actions/auth";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 type ProfileMenuProps = {
   displayName: string;
@@ -10,6 +11,7 @@ type ProfileMenuProps = {
 
 export function ProfileMenu({ displayName }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const avatarLabel = displayName.trim().charAt(0).toUpperCase() || "🐟";
 
@@ -39,7 +41,8 @@ export function ProfileMenu({ displayName }: ProfileMenuProps) {
   }, []);
 
   return (
-    <div ref={menuRef} className="relative">
+    <>
+      <div ref={menuRef} className="relative">
       <button
         type="button"
         className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -65,6 +68,16 @@ export function ProfileMenu({ displayName }: ProfileMenuProps) {
           >
             Profile
           </Link>
+          <button
+            type="button"
+            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            onClick={() => {
+              setIsOpen(false);
+              setFeedbackOpen(true);
+            }}
+          >
+            Feedback
+          </button>
           <form action={logout}>
             <button
               type="submit"
@@ -75,6 +88,8 @@ export function ProfileMenu({ displayName }: ProfileMenuProps) {
           </form>
         </div>
       )}
-    </div>
+      </div>
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
   );
 }
