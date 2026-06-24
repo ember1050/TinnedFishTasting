@@ -25,6 +25,7 @@ export default async function FishDetailPage({
   const allStats = await getAllFishWithStats();
   const stats = allStats.find((f) => f.id === id);
   const proteinPerDollar = (fish.protein_g / fish.price_usd).toFixed(1);
+  const gramsPerDollar = (fish.weight_g / fish.price_usd).toFixed(0);
   const calPerGram = (fish.calories / fish.weight_g).toFixed(2);
 
   return (
@@ -135,7 +136,14 @@ export default async function FishDetailPage({
               <dd className="font-medium border-t pt-2 mt-2">{calPerGram}</dd>
               <dt className="text-gray-500 font-medium">Protein/dollar</dt>
               <dd className="font-medium">{proteinPerDollar}g/$</dd>
-              <dt className="text-gray-500 font-medium">Value Score</dt>
+              <dt className="text-gray-500 font-medium">Food/dollar</dt>
+              <dd className="font-medium">{gramsPerDollar}g/$</dd>
+              <dt
+                className="text-gray-500 font-medium"
+                title="Blends protein-per-dollar and grams-per-dollar"
+              >
+                Value Score
+              </dt>
               <dd className="font-medium">{computeValueMetric(fish).toFixed(1)}/10</dd>
             </dl>
           </div>

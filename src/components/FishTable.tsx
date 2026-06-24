@@ -171,7 +171,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
               <SortHeader
                 label="Value"
                 field="value"
-                hint="Protein per dollar, normalized to 0–10"
+                hint="Blends protein-per-dollar and grams-per-dollar, normalized to 0–10"
               />
             </tr>
           </thead>
@@ -233,8 +233,8 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
       </div>
 
       <p className="mt-4 text-xs text-gray-400">
-        Value = protein per dollar (normalized 0–10). Click column headers to
-        sort.
+        Value blends protein-per-dollar and food-per-dollar (normalized 0–10).
+        Click column headers to sort.
       </p>
     </>
   );

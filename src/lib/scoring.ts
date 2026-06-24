@@ -18,18 +18,36 @@ export function bayesianAverage(
 }
 
 /**
- * Compute a "value score" — protein per dollar, normalized to 0-10.
- * Higher is better (more protein per dollar spent).
+ * Compute a "value score" on a 0-10 scale by combining two notions of value:
+ *   - protein per dollar  (nutritional efficiency)
+ *   - grams per dollar     (sheer quantity of food)
+ * Each component is normalized to 0-10 against a reference rate, then blended
+ * with the weights below. Higher is better. Weights/refs are tunable.
  */
+const PROTEIN_PER_DOLLAR_REF = 15; // g protein per $1 that scores a 10
+const GRAMS_PER_DOLLAR_REF = 50; // g drained weight per $1 that scores a 10
+const PROTEIN_WEIGHT = 0.5;
+const QUANTITY_WEIGHT = 0.5;
+
 export function computeValueMetric(fish: {
   protein_g: number;
+  weight_g: number;
   price_usd: number;
 }): number {
   if (fish.price_usd <= 0) return 0;
-  const proteinPerDollar = fish.protein_g / fish.price_usd;
-  // Typical range: 2-15g protein per dollar for tinned fish
-  // Normalize to 0-10 scale with 15g/$1 = 10
-  return Math.min(10, Math.round((proteinPerDollar / 15) * 10 * 10) / 10);
+
+  const proteinScore = Math.min(
+    10,
+    (fish.protein_g / fish.price_usd / PROTEIN_PER_DOLLAR_REF) * 10
+  );
+  const quantityScore = Math.min(
+    10,
+    (fish.weight_g / fish.price_usd / GRAMS_PER_DOLLAR_REF) * 10
+  );
+
+  const combined =
+    PROTEIN_WEIGHT * proteinScore + QUANTITY_WEIGHT * quantityScore;
+  return Math.round(combined * 10) / 10;
 }
 
 /**
