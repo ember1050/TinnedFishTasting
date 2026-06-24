@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getFishById, getReviewsForFish, getAllFishWithStats } from "@/lib/data";
 import { computeValueMetric } from "@/lib/scoring";
 import { getAdminStatus } from "@/lib/auth-helpers";
+import { fishTypeBadgeClasses, priceTier } from "@/lib/fish-display";
+import { RadarChart } from "@/components/RadarChart";
 
 export default async function FishDetailPage({
   params,
@@ -62,8 +64,15 @@ export default async function FishDetailPage({
               </Link>
             )}
           </div>
-          <p className="text-lg text-gray-600 mb-1">
-            {fish.brand} • <span className="capitalize">{fish.fish_type}</span>
+          <p className="text-lg text-gray-600 mb-1 flex items-center gap-2">
+            <span>{fish.brand}</span>
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${fishTypeBadgeClasses(
+                fish.fish_type
+              )}`}
+            >
+              {fish.fish_type}
+            </span>
           </p>
           {fish.description && (
             <p className="text-sm text-gray-500 mb-4">{fish.description}</p>
@@ -110,6 +119,13 @@ export default async function FishDetailPage({
               )}
               <dt className="text-gray-500">Price</dt>
               <dd className="font-medium">${fish.price_usd.toFixed(2)}</dd>
+              <dt className="text-gray-500">Cost</dt>
+              <dd
+                className="font-medium"
+                title={`$${priceTier(fish).perGram.toFixed(3)} / gram`}
+              >
+                {priceTier(fish).label}
+              </dd>
               <dt className="text-gray-500 font-medium border-t pt-2 mt-2">Cal/gram</dt>
               <dd className="font-medium border-t pt-2 mt-2">{calPerGram}</dd>
               <dt className="text-gray-500 font-medium">Protein/dollar</dt>
@@ -125,33 +141,46 @@ export default async function FishDetailPage({
       {stats?.avg_overall !== null && stats?.avg_overall !== undefined && (
         <section className="mb-12">
           <h2 className="text-xl font-bold mb-4">Rating Breakdown</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: "Flavor", value: stats.avg_flavor },
-              { label: "Texture", value: stats.avg_texture },
-              { label: "Aesthetics", value: stats.avg_aesthetics },
-              { label: "Value", value: stats.avg_value },
-              { label: "Overall", value: stats.avg_overall },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="text-center p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="text-2xl font-bold text-gray-800">
-                  {value?.toFixed(1) ?? "—"}
+          <div className="flex flex-col md:flex-row md:items-center gap-8">
+            <div className="w-full max-w-xs mx-auto md:mx-0">
+              <RadarChart
+                axes={[
+                  { label: "Flavor", value: stats.avg_flavor },
+                  { label: "Texture", value: stats.avg_texture },
+                  { label: "Aesthetics", value: stats.avg_aesthetics },
+                  { label: "Value", value: stats.avg_value },
+                  { label: "Overall", value: stats.avg_overall },
+                ]}
+                max={10}
+                size={300}
+              />
+            </div>
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm flex-1">
+              {[
+                { label: "Flavor", value: stats.avg_flavor },
+                { label: "Texture", value: stats.avg_texture },
+                { label: "Aesthetics", value: stats.avg_aesthetics },
+                { label: "Value", value: stats.avg_value },
+                { label: "Overall", value: stats.avg_overall },
+              ].map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 border-b border-gray-100 pb-1"
+                >
+                  <dt className="text-gray-500">{label}</dt>
+                  <dd className="font-semibold text-gray-800">
+                    {value?.toFixed(1) ?? "—"}
+                  </dd>
                 </div>
-                <div className="text-sm text-gray-500 mt-1">{label}</div>
-                {value !== null && value !== undefined && (
-                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 rounded-full"
-                      style={{ width: `${(value / 10) * 100}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </dl>
           </div>
+          {stats.avg_value === null && (
+            <p className="mt-3 text-xs text-gray-400">
+              Value isn&apos;t scored in blind tastings, so it may be missing
+              until someone leaves a community review.
+            </p>
+          )}
         </section>
       )}
 
