@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { FishWithStats, FishType } from "@/lib/types";
 import { computeValueMetric } from "@/lib/scoring";
-import { fishTypeBadgeClasses, priceTier } from "@/lib/fish-display";
+import { fishTypeBadgeClasses } from "@/lib/fish-display";
 
 type SortKey =
   | "rank"
@@ -91,14 +91,25 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
   }) => (
     <th
       onClick={() => handleSort(field)}
-      title={hint}
       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-900 select-none"
     >
-      {label}
-      {hint && <span className="ml-1 text-gray-400 normal-case">ⓘ</span>}
-      {sortKey === field && (
-        <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
-      )}
+      <span className="inline-flex items-center">
+        {label}
+        {hint && (
+          <span
+            className="group relative ml-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-gray-400 normal-case cursor-help">ⓘ</span>
+            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-48 -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-xs font-normal normal-case tracking-normal text-white shadow-lg group-hover:block">
+              {hint}
+            </span>
+          </span>
+        )}
+        {sortKey === field && (
+          <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
+        )}
+      </span>
     </th>
   );
 
@@ -157,13 +168,6 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
               <SortHeader label="Weight" field="weight" />
               <SortHeader label="Protein" field="protein" />
               <SortHeader label="Price" field="price" />
-              <th
-                title="Affordability by price per gram ($ = cheapest, $$$$ = priciest)"
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Cost
-                <span className="ml-1 text-gray-400 normal-case">ⓘ</span>
-              </th>
               <SortHeader
                 label="Value"
                 field="value"
@@ -175,7 +179,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={9}
                   className="px-4 py-12 text-center text-gray-500"
                 >
                   No fish match your filters.
@@ -218,11 +222,6 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
                   <td className="px-4 py-3 text-sm text-gray-600">
                     ${f.price_usd.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-700">
-                    <span title={`$${priceTier(f).perGram.toFixed(3)} / gram`}>
-                      {priceTier(f).label}
-                    </span>
-                  </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {computeValueMetric(f).toFixed(1)}
                   </td>
@@ -234,8 +233,8 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
       </div>
 
       <p className="mt-4 text-xs text-gray-400">
-        Value = protein per dollar (normalized 0–10). Cost ($–$$$$) reflects
-        price per gram. Click column headers to sort.
+        Value = protein per dollar (normalized 0–10). Click column headers to
+        sort.
       </p>
     </>
   );
