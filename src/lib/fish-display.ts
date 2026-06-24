@@ -1,4 +1,4 @@
-import type { Fish, FishType } from "@/lib/types";
+import type { FishType } from "@/lib/types";
 
 /**
  * Consistent Tailwind badge classes per fish type, so a given species always
@@ -22,26 +22,4 @@ const FISH_TYPE_BADGE: Record<FishType, string> = {
 
 export function fishTypeBadgeClasses(type: FishType): string {
   return FISH_TYPE_BADGE[type] ?? FISH_TYPE_BADGE.other;
-}
-
-/**
- * Affordability tier (Google-Maps style) based on price per gram of drained
- * product — fairer than absolute price across very different tin sizes.
- * Thresholds derived from the current catalog spread (~$0.015–$0.18 /g).
- */
-export interface PriceTier {
-  tier: 1 | 2 | 3 | 4;
-  label: "$" | "$$" | "$$$" | "$$$$";
-  perGram: number;
-}
-
-export function priceTier(fish: Pick<Fish, "price_usd" | "weight_g">): PriceTier {
-  const perGram = fish.weight_g > 0 ? fish.price_usd / fish.weight_g : 0;
-  let tier: PriceTier["tier"];
-  if (perGram < 0.03) tier = 1;
-  else if (perGram < 0.06) tier = 2;
-  else if (perGram < 0.12) tier = 3;
-  else tier = 4;
-  const label = (["$", "$$", "$$$", "$$$$"] as const)[tier - 1];
-  return { tier, label, perGram };
 }

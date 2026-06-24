@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getFishById, getReviewsForFish, getAllFishWithStats } from "@/lib/data";
 import { computeValueMetric } from "@/lib/scoring";
 import { getAdminStatus } from "@/lib/auth-helpers";
-import { fishTypeBadgeClasses, priceTier } from "@/lib/fish-display";
+import { fishTypeBadgeClasses } from "@/lib/fish-display";
 import { RadarChart } from "@/components/RadarChart";
 import { createClient } from "@/lib/supabase/server";
 
@@ -139,13 +139,6 @@ export default async function FishDetailPage({
               )}
               <dt className="text-gray-500">Price</dt>
               <dd className="font-medium">${fish.price_usd.toFixed(2)}</dd>
-              <dt className="text-gray-500">Cost</dt>
-              <dd
-                className="font-medium"
-                title={`$${priceTier(fish).perGram.toFixed(3)} / gram`}
-              >
-                {priceTier(fish).label}
-              </dd>
               <dt className="text-gray-500 font-medium border-t pt-2 mt-2">Cal/gram</dt>
               <dd className="font-medium border-t pt-2 mt-2">{calPerGram}</dd>
               <dt className="text-gray-500 font-medium">Protein/dollar</dt>
