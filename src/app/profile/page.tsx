@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { logout } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProfilePage() {
@@ -75,6 +76,15 @@ export default async function ProfilePage() {
                 <div className="text-xs text-gray-500">Tastings</div>
               </div>
             </div>
+
+            <form action={logout}>
+              <button
+                type="submit"
+                className="mt-4 w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Sign Out
+              </button>
+            </form>
           </div>
         </div>
 

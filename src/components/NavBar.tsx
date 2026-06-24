@@ -1,12 +1,23 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { logout } from "@/app/actions/auth";
+import { ProfileMenu } from "@/components/ProfileMenu";
 
 export async function NavBar() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  let displayName = user?.email?.split("@")[0] ?? "Profile";
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+
+    displayName = profile?.display_name || displayName;
+  }
 
   return (
     <header className="border-b bg-white sticky top-0 z-50">
@@ -28,22 +39,7 @@ export async function NavBar() {
             Tastings
           </Link>
           {user ? (
-            <>
-              <Link
-                href="/profile"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                Profile
-              </Link>
-              <form action={logout}>
-                <button
-                  type="submit"
-                  className="text-sm font-medium text-gray-500 hover:text-gray-700"
-                >
-                  Sign Out
-                </button>
-              </form>
-            </>
+            <ProfileMenu displayName={displayName} />
           ) : (
             <Link
               href="/auth/login"
