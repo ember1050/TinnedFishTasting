@@ -13,6 +13,15 @@ interface FishBasic {
   fish_type: string;
 }
 
+interface ExistingReview {
+  flavor_score: number;
+  texture_score: number;
+  aesthetics_score: number;
+  value_score: number;
+  overall_score: number;
+  notes: string | null;
+}
+
 function ScoreSlider({
   name,
   label,
@@ -55,6 +64,7 @@ export default function ReviewPage({
 }) {
   const [fishId, setFishId] = useState("");
   const [fish, setFish] = useState<FishBasic | null>(null);
+  const [existingReview, setExistingReview] = useState<ExistingReview | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [flavor, setFlavor] = useState(5);
@@ -62,24 +72,63 @@ export default function ReviewPage({
   const [aesthetics, setAesthetics] = useState(5);
   const [value, setValue] = useState(5);
   const [overall, setOverall] = useState(5);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     params.then(({ id }) => {
       setFishId(id);
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-      supabase
-        .from("fish")
-        .select("id, name, brand, fish_type")
-        .eq("id", id)
-        .single()
-        .then(({ data }) => {
-          setFish(data);
-          setLoading(false);
-        });
+
+      async function loadPageData() {
+        const [{ data: fishData }, { data: userData }] = await Promise.all([
+          supabase
+            .from("fish")
+            .select("id, name, brand, fish_type")
+            .eq("id", id)
+            .single(),
+          supabase.auth.getUser(),
+        ]);
+
+        if (cancelled) return;
+
+        setFish(fishData);
+
+        const user = userData.user;
+        if (user) {
+          const { data: reviewData } = await supabase
+            .from("reviews")
+            .select("flavor_score, texture_score, aesthetics_score, value_score, overall_score, notes")
+            .eq("fish_id", id)
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (cancelled) return;
+
+          if (reviewData) {
+            setExistingReview(reviewData);
+            setFlavor(reviewData.flavor_score);
+            setTexture(reviewData.texture_score);
+            setAesthetics(reviewData.aesthetics_score);
+            setValue(reviewData.value_score);
+            setOverall(reviewData.overall_score);
+            setNotes(reviewData.notes ?? "");
+          }
+        }
+
+        setLoading(false);
+      }
+
+      loadPageData();
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [params]);
 
   const [state, formAction, pending] = useActionState(
@@ -122,6 +171,12 @@ export default function ReviewPage({
       {state?.error && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-md px-4 py-3 text-sm text-red-700">
           {state.error}
+        </div>
+      )}
+
+      {existingReview && (
+        <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          You already have a review for this fish. Submitting will replace your existing review.
         </div>
       )}
 
@@ -175,6 +230,8 @@ export default function ReviewPage({
           <textarea
             name="notes"
             rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="What stood out? How did you enjoy it? Any pairing suggestions?"
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
@@ -186,7 +243,7 @@ export default function ReviewPage({
             disabled={pending}
             className="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
           >
-            {pending ? "Submitting..." : "Submit Review"}
+            {pending ? "Submitting..." : existingReview ? "Update Review" : "Submit Review"}
           </button>
           <Link
             href={`/fish/${fishId}`}

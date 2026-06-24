@@ -5,6 +5,7 @@ import { computeValueMetric } from "@/lib/scoring";
 import { getAdminStatus } from "@/lib/auth-helpers";
 import { fishTypeBadgeClasses, priceTier } from "@/lib/fish-display";
 import { RadarChart } from "@/components/RadarChart";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function FishDetailPage({
   params,
@@ -22,6 +23,19 @@ export default async function FishDetailPage({
   }
 
   const reviews = await getReviewsForFish(id);
+  let hasUserReview = userId ? reviews.some((review) => review.user_id === userId) : false;
+
+  if (userId && reviews.length === 0) {
+    const supabase = await createClient();
+    const { data: userReview } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("fish_id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    hasUserReview = Boolean(userReview);
+  }
+
   const allStats = await getAllFishWithStats();
   const stats = allStats.find((f) => f.id === id);
   const proteinPerDollar = (fish.protein_g / fish.price_usd).toFixed(1);
@@ -203,24 +217,53 @@ export default async function FishDetailPage({
           Reviews ({reviews.length})
         </h2>
 
-        {/* Review CTA */}
-        {userId ? (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
-            <p className="text-sm text-blue-800">
-              Tried this fish? Share your thoughts!
-            </p>
+        {/* Review CTA / empty state */}
+        {userId && hasUserReview ? (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-emerald-900">
+                You reviewed this fish.
+              </p>
+              <p className="text-sm text-emerald-700">
+                Want to update your scores or notes?
+              </p>
+            </div>
+            <Link
+              href={`/fish/${id}/review`}
+              className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500"
+            >
+              Edit your review
+            </Link>
+          </div>
+        ) : userId ? (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                {reviews.length === 0 ? "No reviews yet." : "Tried this fish?"}
+              </p>
+              <p className="text-sm text-blue-800">
+                {reviews.length === 0
+                  ? "Be the first to rate this fish."
+                  : "Share your thoughts with a review."}
+              </p>
+            </div>
             <Link
               href={`/fish/${id}/review`}
               className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
             >
-              Leave a Review
+              {reviews.length === 0 ? "Be the first to review" : "Leave a review"}
             </Link>
           </div>
         ) : (
-          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Log in to leave a review for this fish.
-            </p>
+          <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                {reviews.length === 0 ? "No reviews yet." : "Tried this fish?"}
+              </p>
+              <p className="text-sm text-gray-600">
+                Log in to {reviews.length === 0 ? "be the first to review it." : "leave a review."}
+              </p>
+            </div>
             <Link
               href="/auth/login"
               className="rounded-md bg-gray-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
@@ -230,8 +273,8 @@ export default async function FishDetailPage({
           </div>
         )}
         {reviews.length === 0 ? (
-          <p className="text-gray-500">
-            No reviews yet. Be the first to rate this fish!
+          <p className="text-sm text-gray-500">
+            Reviews will appear here once someone shares their rating.
           </p>
         ) : (
           <div className="space-y-4">

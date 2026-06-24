@@ -5,6 +5,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 const FISH_IMAGE_BUCKET = "fish-images";
+const MAX_FISH_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_FISH_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
 
 /** Derive a stable extension from the file's MIME type so identical bytes
  * always map to the same storage path (content-addressing). Falls back to the
@@ -36,6 +44,18 @@ function isDuplicateError(error: unknown): boolean {
   return status === "409" || message.includes("already exists") || message.includes("duplicate");
 }
 
+function fishImageRejectionReason(file: File): string | null {
+  if (!ALLOWED_FISH_IMAGE_TYPES.has(file.type)) {
+    return "Image must be a JPEG, PNG, WebP, GIF, or AVIF file.";
+  }
+
+  if (file.size > MAX_FISH_IMAGE_BYTES) {
+    return "Image must be 5 MB or smaller.";
+  }
+
+  return null;
+}
+
 /**
  * Upload an image using a content-addressed path (sha256 of the bytes).
  * If identical content already exists in the bucket, it is reused rather than
@@ -45,6 +65,10 @@ async function uploadFishImage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   file: File
 ): Promise<string | null> {
+  if (fishImageRejectionReason(file)) {
+    return null;
+  }
+
   const bytes = Buffer.from(await file.arrayBuffer());
   const hash = createHash("sha256").update(bytes).digest("hex");
   const path = `${hash}.${extensionFor(file.type, file.name)}`;
@@ -136,7 +160,15 @@ export async function createFish(formData: FormData) {
   const imageFile = formData.get("image") as File | null;
   let image_url: string | null = null;
   if (imageFile && imageFile.size > 0) {
+    const imageError = fishImageRejectionReason(imageFile);
+    if (imageError) {
+      return { error: imageError };
+    }
+
     image_url = await uploadFishImage(supabase, imageFile);
+    if (!image_url) {
+      return { error: "Image upload failed. Please try again." };
+    }
   }
 
   const { error } = await supabase.from("fish").insert({
@@ -212,8 +244,16 @@ export async function updateFish(fishId: string, formData: FormData) {
   const imageFile = formData.get("image") as File | null;
   let image_url: string | undefined;
   if (imageFile && imageFile.size > 0) {
+    const imageError = fishImageRejectionReason(imageFile);
+    if (imageError) {
+      return { error: imageError };
+    }
+
     const url = await uploadFishImage(supabase, imageFile);
-    if (url) image_url = url;
+    if (!url) {
+      return { error: "Image upload failed. Please try again." };
+    }
+    image_url = url;
   }
 
   const { error } = await supabase
@@ -271,7 +311,7 @@ export async function submitReview(formData: FormData) {
     return { error: "All score fields are required." };
   }
 
-  const { error } = await supabase.from("reviews").insert({
+  const { error } = await supabase.from("reviews").upsert({
     user_id: user.id,
     fish_id,
     flavor_score,
@@ -281,12 +321,10 @@ export async function submitReview(formData: FormData) {
     overall_score,
     notes,
     is_from_tasting: false,
-  });
+    tasting_id: null,
+  }, { onConflict: "user_id,fish_id" });
 
   if (error) {
-    if (error.code === "23505") {
-      return { error: "You've already reviewed this fish." };
-    }
     return { error: error.message };
   }
 
