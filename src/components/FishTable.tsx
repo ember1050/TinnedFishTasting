@@ -101,7 +101,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="text-gray-400 normal-case cursor-help">ⓘ</span>
-            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-48 -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-xs font-normal normal-case tracking-normal text-white shadow-lg group-hover:block">
+            <span className="pointer-events-none absolute right-0 top-full z-20 mt-1 hidden w-52 rounded bg-gray-900 px-2 py-1 text-xs font-normal normal-case tracking-normal text-white shadow-lg group-hover:block">
               {hint}
             </span>
           </span>
@@ -171,7 +171,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
               <SortHeader
                 label="Value"
                 field="value"
-                hint="Blends protein-per-dollar and grams-per-dollar, normalized to 0–10"
+                hint="The average of two 0–10 scores — protein-per-dollar and grams-per-dollar — so it rewards both nutrition and quantity."
               />
             </tr>
           </thead>
@@ -233,8 +233,9 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
       </div>
 
       <p className="mt-4 text-xs text-gray-400">
-        Value blends protein-per-dollar and food-per-dollar (normalized 0–10).
-        Click column headers to sort.
+        Value is the average of two 0–10 scores — protein-per-dollar and
+        food-per-dollar — so it rewards both nutrition and quantity. Click
+        column headers to sort.
       </p>
     </>
   );
