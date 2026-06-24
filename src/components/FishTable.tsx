@@ -4,12 +4,14 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { FishWithStats, FishType } from "@/lib/types";
 import { computeValueMetric } from "@/lib/scoring";
+import { fishTypeBadgeClasses, priceTier } from "@/lib/fish-display";
 
 type SortKey =
   | "rank"
   | "name"
   | "brand"
   | "overall"
+  | "weight"
   | "protein"
   | "price"
   | "value";
@@ -55,6 +57,9 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
           case "price":
             cmp = a.price_usd - b.price_usd;
             break;
+          case "weight":
+            cmp = a.weight_g - b.weight_g;
+            break;
           case "value":
             cmp = computeValueMetric(a) - computeValueMetric(b);
             break;
@@ -78,15 +83,19 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
   const SortHeader = ({
     label,
     field,
+    hint,
   }: {
     label: string;
     field: SortKey;
+    hint?: string;
   }) => (
     <th
       onClick={() => handleSort(field)}
+      title={hint}
       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-900 select-none"
     >
       {label}
+      {hint && <span className="ml-1 text-gray-400 normal-case">ⓘ</span>}
       {sortKey === field && (
         <span className="ml-1">{sortAsc ? "↑" : "↓"}</span>
       )}
@@ -145,16 +154,28 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
                 Type
               </th>
               <SortHeader label="Score" field="overall" />
+              <SortHeader label="Weight" field="weight" />
               <SortHeader label="Protein" field="protein" />
               <SortHeader label="Price" field="price" />
-              <SortHeader label="Value" field="value" />
+              <th
+                title="Affordability by price per gram ($ = cheapest, $$$$ = priciest)"
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Cost
+                <span className="ml-1 text-gray-400 normal-case">ⓘ</span>
+              </th>
+              <SortHeader
+                label="Value"
+                field="value"
+                hint="Protein per dollar, normalized to 0–10"
+              />
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={10}
                   className="px-4 py-12 text-center text-gray-500"
                 >
                   No fish match your filters.
@@ -178,7 +199,7 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
                     {f.brand}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700 capitalize">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${fishTypeBadgeClasses(f.fish_type)}`}>
                       {f.fish_type}
                     </span>
                   </td>
@@ -189,10 +210,18 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
+                    {f.weight_g}g
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
                     {f.protein_g}g
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     ${f.price_usd.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-700">
+                    <span title={`$${priceTier(f).perGram.toFixed(3)} / gram`}>
+                      {priceTier(f).label}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {computeValueMetric(f).toFixed(1)}
@@ -205,8 +234,8 @@ export function FishTable({ fish }: { fish: FishWithStats[] }) {
       </div>
 
       <p className="mt-4 text-xs text-gray-400">
-        Value = protein per dollar, normalized to 0-10 scale. Click column
-        headers to sort.
+        Value = protein per dollar (normalized 0–10). Cost ($–$$$$) reflects
+        price per gram. Click column headers to sort.
       </p>
     </>
   );
