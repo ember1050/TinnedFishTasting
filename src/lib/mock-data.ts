@@ -336,6 +336,10 @@ export function getMockFishWithStats(): FishWithStats[] {
 
     const avg = (scores: number[]) =>
       Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+    const avgNullable = (scores: (number | null)[]) => {
+      const present = scores.filter((s): s is number => s != null);
+      return present.length > 0 ? avg(present) : null;
+    };
 
     return {
       ...fish,
@@ -343,7 +347,7 @@ export function getMockFishWithStats(): FishWithStats[] {
       avg_flavor: avg(fishReviews.map((r) => r.flavor_score)),
       avg_texture: avg(fishReviews.map((r) => r.texture_score)),
       avg_aesthetics: avg(fishReviews.map((r) => r.aesthetics_score)),
-      avg_value: avg(fishReviews.map((r) => r.value_score)),
+      avg_value: avgNullable(fishReviews.map((r) => r.value_score)),
       review_count: count,
       tasting_review_count: fishReviews.filter((r) => r.is_from_tasting).length,
     };

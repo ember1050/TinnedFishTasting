@@ -50,7 +50,7 @@ export interface Review {
   flavor_score: number;
   texture_score: number;
   aesthetics_score: number;
-  value_score: number;
+  value_score: number | null;
   overall_score: number;
   notes: string | null;
   is_from_tasting: boolean;
@@ -63,9 +63,8 @@ export type TastingState =
   | "setup"
   | "blind_active"
   | "blind_locked"
-  | "reveal"
-  | "comprehensive_active"
-  | "comprehensive_locked"
+  | "guessing_active"
+  | "guessing_locked"
   | "published";
 
 export interface Tasting {
@@ -93,7 +92,10 @@ export interface BlindResponse {
   blind_number: number;
   flavor_score: number | null;
   texture_score: number | null;
+  aesthetics_score: number | null;
+  overall_score: number | null;
   notes: string | null;
+  review_text: string | null;
   guess_primary: string | null;
   guess_alternate: string | null;
   submitted_at: string | null;
