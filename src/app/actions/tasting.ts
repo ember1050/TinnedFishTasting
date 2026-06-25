@@ -248,70 +248,22 @@ export async function saveGuess(
 }
 
 /**
- * Host publishes results: turn each participant's blind response into a live
- * review (verified tasting, value omitted) and flip the tasting to published.
+ * Host publishes results: a SECURITY DEFINER function turns each participant's
+ * blind response into a live review (verified tasting, value omitted) and flips
+ * the tasting to published. It must be a definer function because the host
+ * can't read others' blind responses or write reviews on their behalf via RLS.
  */
 export async function publishResults(tastingId: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
 
-  const { data: tasting } = await supabase
-    .from("tastings")
-    .select("host_user_id")
-    .eq("id", tastingId)
-    .single();
+  const { error } = await supabase.rpc("publish_tasting_results", {
+    p_tasting: tastingId,
+  });
 
-  if (!tasting) return { error: "Tasting not found." };
-  if (tasting.host_user_id !== user.id) {
-    return { error: "Only the host can publish results." };
+  if (error) {
+    return { error: error.message };
   }
-
-  // Map blind numbers → fish ids for this tasting.
-  const { data: tFish } = await supabase
-    .from("tasting_fish")
-    .select("blind_number, fish_id")
-    .eq("tasting_id", tastingId);
-
-  const fishByNumber = new Map<number, string>(
-    (tFish || []).map((r) => [r.blind_number, r.fish_id])
-  );
-
-  // Every blind response that has at least an overall score becomes a review.
-  const { data: responses } = await supabase
-    .from("blind_responses")
-    .select(
-      "user_id, blind_number, flavor_score, texture_score, aesthetics_score, overall_score, review_text"
-    )
-    .eq("tasting_id", tastingId);
-
-  const reviewRows = (responses || [])
-    .filter((r) => fishByNumber.has(r.blind_number) && r.overall_score != null)
-    .map((r) => ({
-      user_id: r.user_id,
-      fish_id: fishByNumber.get(r.blind_number)!,
-      flavor_score: r.flavor_score,
-      texture_score: r.texture_score,
-      aesthetics_score: r.aesthetics_score,
-      value_score: null,
-      overall_score: r.overall_score,
-      notes: r.review_text,
-      is_from_tasting: true,
-      tasting_id: tastingId,
-    }));
-
-  if (reviewRows.length > 0) {
-    const { error: rErr } = await supabase
-      .from("reviews")
-      .upsert(reviewRows, { onConflict: "user_id,fish_id" });
-    if (rErr) return { error: rErr.message };
-  }
-
-  const { error: sErr } = await supabase
-    .from("tastings")
-    .update({ state: "published" })
-    .eq("id", tastingId);
-
-  if (sErr) return { error: sErr.message };
 
   revalidatePath(`/tastings/${tastingId}`);
   revalidatePath(`/tastings/${tastingId}/host`);

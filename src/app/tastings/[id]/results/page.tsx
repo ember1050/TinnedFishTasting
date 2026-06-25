@@ -1,123 +1,214 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getTastingContext, getTastingFish, getMyBlindResponses } from "@/lib/tastings";
 
-/**
- * Results / Report Card page.
- * Shows after host reveals: guess accuracy, group rankings, individual stats.
- *
- * TODO: Generate real "Wrapped"-style insights from data.
- * TODO: Wire to actual tasting results from DB.
- * TODO: Revisit the visual design — charts/graphs would be nice here.
- */
-export default function ResultsPage() {
-  // Mock results
-  const guessResults = {
-    correct: 3,
-    total: 4,
-    primaryCorrect: 2,
-    alternateCorrect: 1,
-    points: 5,
-    maxPoints: 8,
-  };
+export default async function ResultsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const ctx = await getTastingContext(id);
+  if (!ctx) notFound();
 
-  const groupRankings = [
-    { rank: 1, name: "Ortiz Tuna Fillets", avgScore: 8.7, topPicks: 3 },
-    { rank: 2, name: "Nuri Smoked Sardines", avgScore: 8.3, topPicks: 2 },
-    { rank: 3, name: "King Oscar Mackerel", avgScore: 7.8, topPicks: 1 },
-    { rank: 4, name: "Wild Planet Sardines", avgScore: 7.2, topPicks: 0 },
-  ];
+  const { tasting, userId } = ctx;
 
-  const insights = [
-    "🎯 You guessed 3/4 fish correctly — top 25% of guessers!",
-    "🐟 You rated sardines 20% higher than the group average",
-    "💰 You tend to rank budget fish higher on value (obvious but true!)",
-    "👯 Your taste profile most closely matches TinOpener's",
-  ];
+  if (tasting.state !== "published") {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <p className="text-gray-600 mb-4">
+          Results haven&apos;t been published yet.
+        </p>
+        <Link
+          href={`/tastings/${id}`}
+          className="text-blue-600 hover:underline text-sm"
+        >
+          ← Back to tasting
+        </Link>
+      </div>
+    );
+  }
+
+  const fish = await getTastingFish(id);
+  const correctByNumber = new Map(fish.map((f) => [f.blind_number, f.fish]));
+
+  // Personal report card (if the viewer was a participant).
+  const myResponses = userId ? await getMyBlindResponses(id, userId) : [];
+  let primaryCorrect = 0;
+  let alternateCorrect = 0;
+  for (const r of myResponses) {
+    const correct = correctByNumber.get(r.blind_number);
+    if (!correct) continue;
+    if (r.guess_primary === correct.id) primaryCorrect++;
+    else if (r.guess_alternate === correct.id) alternateCorrect++;
+  }
+  const guessScore = primaryCorrect * 2 + alternateCorrect * 1;
+  const maxScore = fish.length * 2;
+  const hasGuesses = myResponses.some(
+    (r) => r.guess_primary || r.guess_alternate
+  );
+
+  // Group ranking — average published overall score per fish from this tasting.
+  const supabase = await createClient();
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("fish_id, overall_score")
+    .eq("tasting_id", id);
+
+  const agg = new Map<string, { sum: number; n: number }>();
+  for (const rv of reviews ?? []) {
+    const a = agg.get(rv.fish_id) ?? { sum: 0, n: 0 };
+    a.sum += rv.overall_score;
+    a.n += 1;
+    agg.set(rv.fish_id, a);
+  }
+
+  const ranking = fish
+    .map((f) => {
+      const a = agg.get(f.fish.id);
+      return {
+        fish: f.fish,
+        blind_number: f.blind_number,
+        avg: a ? a.sum / a.n : null,
+        n: a?.n ?? 0,
+      };
+    })
+    .sort((x, y) => (y.avg ?? -1) - (x.avg ?? -1));
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
       <Link
-        href=".."
+        href={`/tastings/${id}`}
         className="text-sm text-blue-600 hover:underline mb-4 inline-block"
       >
-        ← Back to tasting lobby
+        ← Back to tasting
       </Link>
 
-      <h1 className="text-3xl font-bold mb-2">Results & Report Card</h1>
-      <p className="text-gray-500 mb-8">Friday Fish Night #3</p>
+      <h1 className="text-3xl font-bold mb-1">Results</h1>
+      <p className="text-gray-500 mb-8">{tasting.title}</p>
 
-      {/* Guess Accuracy */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold mb-4">🎯 Your Guess Accuracy</h2>
-        <div className="bg-blue-50 rounded-lg p-6">
-          <div className="text-4xl font-bold text-blue-700 mb-1">
-            {guessResults.correct}/{guessResults.total}
-          </div>
-          <p className="text-sm text-blue-600 mb-3">fish guessed correctly</p>
-          <div className="text-sm text-gray-600 space-y-1">
-            <p>Primary correct: {guessResults.primaryCorrect} (×2 pts)</p>
-            <p>Alternate correct: {guessResults.alternateCorrect} (×1 pt)</p>
-            <p className="font-medium">
-              Total: {guessResults.points}/{guessResults.maxPoints} points
+      {/* Personal report card */}
+      {hasGuesses && (
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-3">Your Report Card</h2>
+          <div className="rounded-xl border bg-blue-50 border-blue-100 p-5 mb-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-blue-700">
+                {guessScore}
+              </span>
+              <span className="text-blue-500">/ {maxScore} points</span>
+            </div>
+            <p className="text-sm text-blue-800 mt-1">
+              {primaryCorrect} nailed on the first guess
+              {alternateCorrect > 0 && `, ${alternateCorrect} on the backup`}.
             </p>
           </div>
+          <div className="rounded-lg border divide-y">
+            {fish.map((f) => {
+              const r = myResponses.find(
+                (x) => x.blind_number === f.blind_number
+              );
+              const correct = f.fish;
+              const gotPrimary = r?.guess_primary === correct.id;
+              const gotAlternate = r?.guess_alternate === correct.id;
+              return (
+                <div
+                  key={f.blind_number}
+                  className="flex items-center justify-between px-4 py-2 text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
+                      {f.blind_number}
+                    </span>
+                    <Link
+                      href={`/fish/${correct.id}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {correct.name}
+                    </Link>
+                  </span>
+                  <span>
+                    {gotPrimary ? (
+                      <span className="text-green-600 font-medium">
+                        ✓ First guess
+                      </span>
+                    ) : gotAlternate ? (
+                      <span className="text-amber-600 font-medium">
+                        ✓ Backup
+                      </span>
+                    ) : (
+                      <span className="text-red-500">✗ Missed</span>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* The reveal */}
+      <section className="mb-10">
+        <h2 className="text-xl font-bold mb-3">The Reveal</h2>
+        <div className="rounded-lg border divide-y">
+          {fish.map((f) => (
+            <div
+              key={f.blind_number}
+              className="flex items-center gap-3 px-4 py-2 text-sm"
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
+                {f.blind_number}
+              </span>
+              <Link
+                href={`/fish/${f.fish.id}`}
+                className="font-medium text-blue-600 hover:underline"
+              >
+                {f.fish.name}
+              </Link>
+              <span className="text-gray-400">{f.fish.brand}</span>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Group Rankings */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold mb-4">🏆 Group Rankings</h2>
-        <div className="border rounded-lg divide-y">
-          {groupRankings.map((fish) => (
+      {/* Group ranking */}
+      <section>
+        <h2 className="text-xl font-bold mb-3">Group Ranking</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          By average overall score across everyone&apos;s blind reviews.
+        </p>
+        <div className="rounded-lg border divide-y">
+          {ranking.map((r, i) => (
             <div
-              key={fish.rank}
+              key={r.fish.id}
               className="flex items-center justify-between px-4 py-3"
             >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`text-lg font-bold ${
-                    fish.rank === 1
-                      ? "text-yellow-500"
-                      : fish.rank === 2
-                      ? "text-gray-400"
-                      : fish.rank === 3
-                      ? "text-amber-600"
-                      : "text-gray-300"
-                  }`}
-                >
-                  #{fish.rank}
+              <span className="flex items-center gap-3">
+                <span className="text-lg font-bold text-gray-400 w-6">
+                  {i + 1}
                 </span>
-                <div>
-                  <p className="font-medium text-sm">{fish.name}</p>
-                  <p className="text-xs text-gray-400">
-                    In {fish.topPicks} participant&apos;s top 3
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold">{fish.avgScore}</span>
-                <span className="text-sm text-gray-400">/10</span>
-              </div>
+                <Link
+                  href={`/fish/${r.fish.id}`}
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  {r.fish.name}
+                </Link>
+                <span className="text-sm text-gray-400">{r.fish.brand}</span>
+              </span>
+              <span className="text-sm">
+                {r.avg !== null ? (
+                  <span className="font-bold">{r.avg.toFixed(1)}</span>
+                ) : (
+                  <span className="text-gray-400">no reviews</span>
+                )}
+                {r.avg !== null && (
+                  <span className="text-gray-400"> /10</span>
+                )}
+              </span>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Personal Insights */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold mb-4">📊 Your Tasting Wrapped</h2>
-        <div className="space-y-3">
-          {insights.map((insight, i) => (
-            <div
-              key={i}
-              className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 text-sm"
-            >
-              {insight}
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-gray-400">
-          Insights become more detailed after 3+ tastings.
-        </p>
       </section>
     </div>
   );
