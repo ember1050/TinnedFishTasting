@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getPublicTastings, STATE_LABELS } from "@/lib/tastings";
+import { JoinByCode } from "@/components/JoinByCode";
 
-export default function TastingsPage() {
+export default async function TastingsPage() {
+  const publicTastings = await getPublicTastings();
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -16,22 +20,39 @@ export default function TastingsPage() {
       {/* Join by code */}
       <div className="mb-8 p-6 bg-gray-50 rounded-lg">
         <h2 className="text-lg font-semibold mb-2">Join a Private Tasting</h2>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Enter event code..."
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm flex-1 max-w-xs"
-          />
-          <button className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">
-            Join
-          </button>
-        </div>
+        <JoinByCode />
       </div>
 
       {/* Public tastings */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Public Tastings</h2>
-        <p className="text-gray-500">No public tastings are currently listed.</p>
+        {publicTastings.length === 0 ? (
+          <p className="text-gray-500">
+            No public tastings are currently listed.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {publicTastings.map((t) => (
+              <li key={t.id}>
+                <Link
+                  href={`/tastings/${t.id}`}
+                  className="block rounded-lg border p-4 hover:border-blue-400 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">{t.title}</h3>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                      {STATE_LABELS[t.state]}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {t.participant_count} participant
+                    {t.participant_count !== 1 && "s"}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
