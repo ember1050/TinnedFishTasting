@@ -74,6 +74,32 @@ export default async function HostControlPage({
     tasting.state
   );
 
+  // Participant guesses (host-only) once guessing has started.
+  const showGuesses = [
+    "guessing_active",
+    "guessing_locked",
+    "published",
+  ].includes(tasting.state);
+  let guesses: {
+    user_id: string;
+    display_name: string;
+    blind_number: number;
+    primary_guess: string | null;
+    alternate_guess: string | null;
+  }[] = [];
+  if (showGuesses) {
+    const { data: g } = await supabase.rpc("tasting_guesses", {
+      p_tasting: id,
+    });
+    guesses = (g as typeof guesses) ?? [];
+  }
+  const guessesByUser = new Map<string, typeof guesses>();
+  for (const row of guesses) {
+    const arr = guessesByUser.get(row.display_name) ?? [];
+    arr.push(row);
+    guessesByUser.set(row.display_name, arr);
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
       <TastingRealtime tastingId={id} />
@@ -183,6 +209,48 @@ export default async function HostControlPage({
           </div>
         )}
       </section>
+
+      {/* Participant guesses (host-only) */}
+      {showGuesses && (
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold mb-3">Guesses</h2>
+          {guessesByUser.size === 0 ? (
+            <p className="text-sm text-gray-400">No guesses submitted yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {[...guessesByUser.entries()].map(([name, list]) => (
+                <div key={name} className="rounded-lg border">
+                  <div className="px-4 py-2 border-b bg-gray-50 text-sm font-medium">
+                    {name}
+                  </div>
+                  <div className="divide-y">
+                    {list
+                      .sort((a, b) => a.blind_number - b.blind_number)
+                      .map((row) => (
+                        <div
+                          key={row.blind_number}
+                          className="flex items-center gap-3 px-4 py-2 text-sm"
+                        >
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
+                            {row.blind_number}
+                          </span>
+                          <span className="font-medium">
+                            {row.primary_guess ?? "—"}
+                          </span>
+                          {row.alternate_guess && (
+                            <span className="text-gray-400">
+                              (backup: {row.alternate_guess})
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

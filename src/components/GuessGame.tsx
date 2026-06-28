@@ -105,11 +105,13 @@ export function GuessGame({
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">— Select —</option>
-                  {candidates.map((c) => (
-                    <option key={c.fish_id} value={c.fish_id}>
-                      {c.label}
-                    </option>
-                  ))}
+                  {candidates
+                    .filter((c) => c.fish_id !== g.alternate)
+                    .map((c) => (
+                      <option key={c.fish_id} value={c.fish_id}>
+                        {c.label}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div>
@@ -127,11 +129,13 @@ export function GuessGame({
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">— Select —</option>
-                  {candidates.map((c) => (
-                    <option key={c.fish_id} value={c.fish_id}>
-                      {c.label}
-                    </option>
-                  ))}
+                  {candidates
+                    .filter((c) => c.fish_id !== g.primary)
+                    .map((c) => (
+                      <option key={c.fish_id} value={c.fish_id}>
+                        {c.label}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>

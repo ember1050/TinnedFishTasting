@@ -95,6 +95,27 @@ export async function getPublicTastings(): Promise<
   }));
 }
 
+/** Tastings the current user is hosting or has joined (most recent first). */
+export async function getMyTastings(
+  userId: string
+): Promise<(Tasting & { is_host: boolean })[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tasting_participants")
+    .select("tastings(*)")
+    .eq("user_id", userId);
+
+  const tastings = (
+    (data as unknown as { tastings: Tasting | null }[]) ?? []
+  )
+    .map((r) => r.tastings)
+    .filter((t): t is Tasting => t !== null)
+    .map((t) => ({ ...t, is_host: t.host_user_id === userId }));
+
+  tastings.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return tastings;
+}
+
 export interface TastingContext {
   tasting: Tasting;
   isHost: boolean;

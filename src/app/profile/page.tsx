@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getMyTastings, STATE_LABELS } from "@/lib/tastings";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -32,6 +33,8 @@ export default async function ProfilePage() {
     .from("tasting_participants")
     .select("tasting_id")
     .eq("user_id", user.id);
+
+  const myTastings = await getMyTastings(user.id);
 
   const reviewCount = reviews?.length ?? 0;
   const tastingCount = participations?.length ?? 0;
@@ -141,15 +144,39 @@ export default async function ProfilePage() {
             </div>
           )}
 
-          {/* Reach goal placeholder */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <h3 className="text-sm font-medium text-gray-600 mb-1">
-              🎯 Fish Completion Tracker (Coming Soon)
-            </h3>
-            <p className="text-xs text-gray-400">
-              See which fish from the catalog you&apos;ve reviewed and which ones
-              are still waiting for your verdict.
-            </p>
+          {/* Past tastings */}
+          <div className="mt-8">
+            <h3 className="text-lg font-bold mb-3">My Tastings</h3>
+            {myTastings.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                You haven&apos;t joined any tastings yet.{" "}
+                <Link href="/tastings" className="text-blue-600 hover:underline">
+                  Find one →
+                </Link>
+              </p>
+            ) : (
+              <div className="border rounded-lg divide-y">
+                {myTastings.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/tastings/${t.id}`}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                  >
+                    <span className="text-sm font-medium text-blue-600">
+                      {t.title}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {t.is_host && (
+                        <span className="text-xs text-gray-400">host</span>
+                      )}
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                        {STATE_LABELS[t.state]}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

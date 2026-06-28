@@ -8,6 +8,9 @@ import {
 } from "@/lib/tastings";
 import { TastingRealtime } from "@/components/TastingRealtime";
 import { JoinPublicButton } from "@/components/JoinPublicButton";
+import { LeaveButton } from "@/components/LeaveButton";
+import { fishTypeBadgeClasses } from "@/lib/fish-display";
+import type { Fish } from "@/lib/types";
 
 export default async function TastingLobbyPage({
   params,
@@ -25,6 +28,12 @@ export default async function TastingLobbyPage({
   ]);
 
   const canSeeCode = (isHost || isParticipant) && tasting.event_code;
+
+  // Candidate pool for the interlude — names only, sorted so the order doesn't
+  // leak the blind-number mapping.
+  const candidateFish = [...fish]
+    .map((f) => f.fish)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
@@ -101,7 +110,11 @@ export default async function TastingLobbyPage({
       {/* State-driven action */}
       {isParticipant && (
         <section className="mb-8">
-          <StageAction state={tasting.state} tastingId={id} />
+          <StageAction
+            state={tasting.state}
+            tastingId={id}
+            candidateFish={candidateFish}
+          />
         </section>
       )}
 
@@ -119,6 +132,36 @@ export default async function TastingLobbyPage({
           </p>
         </div>
       )}
+
+      {/* Leave (participants only; the host can't abandon their tasting) */}
+      {isParticipant && !isHost && (
+        <div className="mt-8 pt-4 border-t">
+          <LeaveButton tastingId={id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FishCards({ fish }: { fish: Fish[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+      {fish.map((f) => (
+        <div
+          key={f.id}
+          className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm"
+        >
+          <span className="font-medium">{f.name}</span>
+          <span className="text-gray-400">{f.brand}</span>
+          <span
+            className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium capitalize ${fishTypeBadgeClasses(
+              f.fish_type
+            )}`}
+          >
+            {f.fish_type}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -126,9 +169,11 @@ export default async function TastingLobbyPage({
 function StageAction({
   state,
   tastingId,
+  candidateFish,
 }: {
   state: string;
   tastingId: string;
+  candidateFish: Fish[];
 }) {
   const card = "block border-2 rounded-xl p-6 transition-all";
 
@@ -159,10 +204,13 @@ function StageAction({
       );
     case "blind_locked":
       return (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-6 text-center text-amber-800">
-          <div className="text-3xl mb-2">👂</div>
-          Blind scoring is locked. The host is presenting the candidate fish —
-          guessing opens next.
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-6">
+          <div className="text-center text-amber-800">
+            <div className="text-3xl mb-2">👂</div>
+            Blind scoring is locked. Here are the fish in this tasting — follow
+            along as the host introduces them. Guessing opens next.
+          </div>
+          <FishCards fish={candidateFish} />
         </div>
       );
     case "guessing_active":

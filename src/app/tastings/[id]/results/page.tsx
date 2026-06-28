@@ -174,9 +174,11 @@ export default async function ResultsPage({
 
       {/* Group ranking */}
       <section>
-        <h2 className="text-xl font-bold mb-3">Group Ranking</h2>
+        <h2 className="text-xl font-bold mb-1">Group Tier List</h2>
         <p className="text-sm text-gray-500 mb-3">
-          By average overall score across everyone&apos;s blind reviews.
+          Each fish&apos;s average <strong>overall rating</strong> across
+          everyone&apos;s blind reviews (out of 10). This is about how the fish
+          scored — not who guessed it right.
         </p>
         <div className="rounded-lg border divide-y">
           {ranking.map((r, i) => (

@@ -114,6 +114,32 @@ export async function joinPublicTasting(tastingId: string) {
   return { success: true };
 }
 
+/** Leave a tasting (participants only — the host can't abandon their own). */
+export async function leaveTasting(tastingId: string) {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Not authenticated." };
+
+  const { data: t } = await supabase
+    .from("tastings")
+    .select("host_user_id")
+    .eq("id", tastingId)
+    .single();
+
+  if (t?.host_user_id === user.id) {
+    return { error: "The host can't leave their own tasting." };
+  }
+
+  const { error } = await supabase
+    .from("tasting_participants")
+    .delete()
+    .eq("tasting_id", tastingId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+
+  redirect("/tastings");
+}
+
 /** Join a private tasting by its event code (via SECURITY DEFINER RPC). */
 export async function joinTastingByCode(formData: FormData) {
   const { supabase, user } = await requireUser();
