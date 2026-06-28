@@ -2,6 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { parse, signupSchema, loginSchema, resetSchema } from "@/lib/validation";
+
+/** Read a form field as a string (empty string when missing or a file). */
+function str(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
 
 /**
  * Only allow same-origin relative paths as post-login redirect targets,
@@ -18,53 +25,45 @@ function safeRedirectPath(value: FormDataEntryValue | null): string {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const displayName = formData.get("name") as string;
-
-  if (!email || !password || !displayName) {
-    return { error: "All fields are required." };
-  }
-
-  if (password.length < 8) {
-    return { error: "Password must be at least 8 characters." };
-  }
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { display_name: displayName },
-    },
+  const parsed = parse(signupSchema, {
+    email: str(formData, "email"),
+    password: str(formData, "password"),
+    name: str(formData, "name"),
   });
+  if (!parsed.ok) return { error: parsed.error };
 
-  if (error) {
-    return { error: error.message };
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: { data: { display_name: parsed.data.name } },
+    });
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   redirect("/profile");
 }
 
 export async function login(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
   const redirectTo = safeRedirectPath(formData.get("redirect"));
-
-  if (!email || !password) {
-    return { error: "Email and password are required." };
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+  const parsed = parse(loginSchema, {
+    email: str(formData, "email"),
+    password: str(formData, "password"),
   });
+  if (!parsed.ok) return { error: parsed.error };
 
-  if (error) {
-    return { error: error.message };
+  const supabase = await createClient();
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   redirect(redirectTo);
@@ -72,25 +71,29 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Even if sign-out fails server-side, send the user home.
+  }
   redirect("/");
 }
 
 export async function resetPassword(formData: FormData) {
+  const parsed = parse(resetSchema, { email: str(formData, "email") });
+  if (!parsed.ok) return { error: parsed.error };
+
   const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-
-  if (!email) {
-    return { error: "Email is required." };
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
-  });
-
-  if (error) {
-    return { error: error.message };
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      parsed.data.email,
+      {
+        redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
+      }
+    );
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   return { success: "Check your email for a reset link." };

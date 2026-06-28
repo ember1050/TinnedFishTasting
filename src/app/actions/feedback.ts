@@ -1,18 +1,17 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { parse, feedbackSchema } from "@/lib/validation";
 
-type FeedbackType = "bug" | "feature";
+function str(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
 
 type FeedbackResult = {
   error?: string;
   success?: boolean;
 };
-
-function getString(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
 
 export async function submitFeedback(
   formData: FormData
@@ -26,31 +25,23 @@ export async function submitFeedback(
     return { error: "You must be logged in to send feedback." };
   }
 
-  const type = getString(formData, "type");
-  const message = getString(formData, "message");
-  const pageUrl = getString(formData, "page_url");
-
-  if (type !== "bug" && type !== "feature") {
-    return { error: "Choose bug or feature request." };
-  }
-
-  if (!message) {
-    return { error: "Feedback message is required." };
-  }
-
-  if (message.length > 4000) {
-    return { error: "Feedback must be 4,000 characters or fewer." };
-  }
-
-  const { error } = await supabase.from("feedback").insert({
-    user_id: user.id,
-    type: type as FeedbackType,
-    message,
-    page_url: pageUrl || null,
+  const parsed = parse(feedbackSchema, {
+    type: str(formData, "type"),
+    message: str(formData, "message"),
+    page_url: str(formData, "page_url"),
   });
+  if (!parsed.ok) return { error: parsed.error };
 
-  if (error) {
-    return { error: error.message };
+  try {
+    const { error } = await supabase.from("feedback").insert({
+      user_id: user.id,
+      type: parsed.data.type,
+      message: parsed.data.message,
+      page_url: parsed.data.page_url,
+    });
+    if (error) return { error: "Couldn't save your feedback. Please try again." };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   return { success: true };

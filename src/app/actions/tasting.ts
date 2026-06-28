@@ -4,6 +4,19 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { TastingState } from "@/lib/types";
+import {
+  parse,
+  createTastingSchema,
+  eventCodeSchema,
+  blindResponseSchema,
+  guessSchema,
+  uuidSchema,
+} from "@/lib/validation";
+
+function str(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
 
 const STATE_FLOW: TastingState[] = [
   "setup",
@@ -46,69 +59,83 @@ export async function createTasting(formData: FormData) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "You must be logged in to host a tasting." };
 
-  const title = (formData.get("title") as string)?.trim();
-  const visibility = (formData.get("visibility") as string) || "private";
-  const isPublic = visibility === "public";
-  const fishIdsRaw = (formData.get("fish_ids") as string) || "";
-  const fishIds = fishIdsRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  const fishIds = str(formData, "fish_ids")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-  if (!title) return { error: "Please give your tasting a name." };
-  if (fishIds.length < 2) {
-    return { error: "Pick at least two fish for the tasting." };
-  }
-  if (new Set(fishIds).size !== fishIds.length) {
-    return { error: "Each fish can only be added once." };
-  }
+  const parsed = parse(createTastingSchema, {
+    title: str(formData, "title"),
+    visibility: str(formData, "visibility") || "private",
+    fish_ids: fishIds,
+  });
+  if (!parsed.ok) return { error: parsed.error };
 
+  const isPublic = parsed.data.visibility === "public";
   const eventCode = isPublic ? null : generateEventCode();
 
-  const { data: tasting, error: tErr } = await supabase
-    .from("tastings")
-    .insert({
-      host_user_id: user.id,
-      title,
-      is_public: isPublic,
-      event_code: eventCode,
-      state: "setup",
-    })
-    .select("id")
-    .single();
+  let tastingId: string;
+  try {
+    const { data: tasting, error: tErr } = await supabase
+      .from("tastings")
+      .insert({
+        host_user_id: user.id,
+        title: parsed.data.title,
+        is_public: isPublic,
+        event_code: eventCode,
+        state: "setup",
+      })
+      .select("id")
+      .single();
 
-  if (tErr || !tasting) {
-    return { error: tErr?.message || "Could not create the tasting." };
+    if (tErr || !tasting) {
+      return { error: tErr?.message || "Could not create the tasting." };
+    }
+    tastingId = tasting.id;
+
+    const fishRows = parsed.data.fish_ids.map((fish_id, i) => ({
+      tasting_id: tastingId,
+      fish_id,
+      blind_number: i + 1,
+    }));
+
+    const { error: fErr } = await supabase
+      .from("tasting_fish")
+      .insert(fishRows);
+    if (fErr) {
+      // Roll back the orphaned tasting so we don't leave a half-created event.
+      await supabase.from("tastings").delete().eq("id", tastingId);
+      return { error: fErr.message };
+    }
+
+    await supabase
+      .from("tasting_participants")
+      .insert({ tasting_id: tastingId, user_id: user.id });
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
-  const fishRows = fishIds.map((fish_id, i) => ({
-    tasting_id: tasting.id,
-    fish_id,
-    blind_number: i + 1,
-  }));
-
-  const { error: fErr } = await supabase.from("tasting_fish").insert(fishRows);
-  if (fErr) {
-    // Roll back the orphaned tasting so we don't leave a half-created event.
-    await supabase.from("tastings").delete().eq("id", tasting.id);
-    return { error: fErr.message };
-  }
-
-  await supabase
-    .from("tasting_participants")
-    .insert({ tasting_id: tasting.id, user_id: user.id });
-
-  redirect(`/tastings/${tasting.id}`);
+  redirect(`/tastings/${tastingId}`);
 }
 
 /** Join a public tasting the user can already see. */
 export async function joinPublicTasting(tastingId: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "You must be logged in to join." };
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
 
-  const { error } = await supabase
-    .from("tasting_participants")
-    .insert({ tasting_id: tastingId, user_id: user.id });
+  try {
+    const { error } = await supabase
+      .from("tasting_participants")
+      .insert({ tasting_id: tastingId, user_id: user.id });
 
-  // Ignore duplicate-participant errors (already joined).
-  if (error && error.code !== "23505") return { error: error.message };
+    // Ignore duplicate-participant errors (already joined).
+    if (error && error.code !== "23505") return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
 
   revalidatePath(`/tastings/${tastingId}`);
   return { success: true };
@@ -118,6 +145,9 @@ export async function joinPublicTasting(tastingId: string) {
 export async function leaveTasting(tastingId: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
 
   const { data: t } = await supabase
     .from("tastings")
@@ -129,13 +159,16 @@ export async function leaveTasting(tastingId: string) {
     return { error: "The host can't leave their own tasting." };
   }
 
-  const { error } = await supabase
-    .from("tasting_participants")
-    .delete()
-    .eq("tasting_id", tastingId)
-    .eq("user_id", user.id);
-
-  if (error) return { error: error.message };
+  try {
+    const { error } = await supabase
+      .from("tasting_participants")
+      .delete()
+      .eq("tasting_id", tastingId)
+      .eq("user_id", user.id);
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
 
   redirect("/tastings");
 }
@@ -145,24 +178,32 @@ export async function joinTastingByCode(formData: FormData) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "You must be logged in to join." };
 
-  const code = (formData.get("code") as string)?.trim();
-  if (!code) return { error: "Enter an event code." };
+  const parsed = parse(eventCodeSchema, { code: str(formData, "code") });
+  if (!parsed.ok) return { error: parsed.error };
 
-  const { data, error } = await supabase.rpc("join_tasting_by_code", {
-    p_code: code,
-  });
-
-  if (error || !data) {
-    return { error: "That event code didn't match any tasting." };
+  let tastingId: string | null = null;
+  try {
+    const { data, error } = await supabase.rpc("join_tasting_by_code", {
+      p_code: parsed.data.code,
+    });
+    if (error || !data) {
+      return { error: "That event code didn't match any tasting." };
+    }
+    tastingId = data as string;
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
-  redirect(`/tastings/${data}`);
+  redirect(`/tastings/${tastingId}`);
 }
 
 /** Host advances the tasting to the next state in the flow. */
 export async function advanceTastingState(tastingId: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
 
   const { data: tasting, error } = await supabase
     .from("tastings")
@@ -183,12 +224,15 @@ export async function advanceTastingState(tastingId: string) {
     return publishResults(tastingId);
   }
 
-  const { error: uErr } = await supabase
-    .from("tastings")
-    .update({ state: next })
-    .eq("id", tastingId);
-
-  if (uErr) return { error: uErr.message };
+  try {
+    const { error: uErr } = await supabase
+      .from("tastings")
+      .update({ state: next })
+      .eq("id", tastingId);
+    if (uErr) return { error: uErr.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
 
   revalidatePath(`/tastings/${tastingId}`);
   revalidatePath(`/tastings/${tastingId}/host`);
@@ -213,6 +257,19 @@ export async function saveBlindResponse(
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
 
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
+  const parsed = parse(blindResponseSchema, {
+    blind_number: blindNumber,
+    flavor_score: payload.flavor_score,
+    texture_score: payload.texture_score,
+    overall_score: payload.overall_score,
+    notes: payload.notes,
+    review_text: payload.review_text,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+
   const { data: tasting } = await supabase
     .from("tastings")
     .select("state")
@@ -223,17 +280,19 @@ export async function saveBlindResponse(
     return { error: "The blind tasting is not open for edits." };
   }
 
-  const { error } = await supabase.from("blind_responses").upsert(
-    {
-      tasting_id: tastingId,
-      user_id: user.id,
-      blind_number: blindNumber,
-      ...payload,
-    },
-    { onConflict: "tasting_id,user_id,blind_number" }
-  );
-
-  if (error) return { error: error.message };
+  try {
+    const { error } = await supabase.from("blind_responses").upsert(
+      {
+        tasting_id: tastingId,
+        user_id: user.id,
+        ...parsed.data,
+      },
+      { onConflict: "tasting_id,user_id,blind_number" }
+    );
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't save — check your connection." };
+  }
   return { success: true };
 }
 
@@ -247,6 +306,22 @@ export async function saveGuess(
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
 
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
+  const parsed = parse(guessSchema, {
+    blind_number: blindNumber,
+    guess_primary: guessPrimary,
+    guess_alternate: guessAlternate,
+  });
+  if (!parsed.ok) return { error: parsed.error };
+  if (
+    parsed.data.guess_primary &&
+    parsed.data.guess_primary === parsed.data.guess_alternate
+  ) {
+    return { error: "Pick two different fish." };
+  }
+
   const { data: tasting } = await supabase
     .from("tastings")
     .select("state")
@@ -257,18 +332,21 @@ export async function saveGuess(
     return { error: "Guessing is not currently open." };
   }
 
-  const { error } = await supabase.from("blind_responses").upsert(
-    {
-      tasting_id: tastingId,
-      user_id: user.id,
-      blind_number: blindNumber,
-      guess_primary: guessPrimary,
-      guess_alternate: guessAlternate,
-    },
-    { onConflict: "tasting_id,user_id,blind_number" }
-  );
-
-  if (error) return { error: error.message };
+  try {
+    const { error } = await supabase.from("blind_responses").upsert(
+      {
+        tasting_id: tastingId,
+        user_id: user.id,
+        blind_number: blindNumber,
+        guess_primary: parsed.data.guess_primary ?? null,
+        guess_alternate: parsed.data.guess_alternate ?? null,
+      },
+      { onConflict: "tasting_id,user_id,blind_number" }
+    );
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't save — check your connection." };
+  }
   return { success: true };
 }
 
@@ -281,13 +359,17 @@ export async function saveGuess(
 export async function publishResults(tastingId: string) {
   const { supabase, user } = await requireUser();
   if (!user) return { error: "Not authenticated." };
+  if (!uuidSchema.safeParse(tastingId).success) {
+    return { error: "Invalid tasting." };
+  }
 
-  const { error } = await supabase.rpc("publish_tasting_results", {
-    p_tasting: tastingId,
-  });
-
-  if (error) {
-    return { error: error.message };
+  try {
+    const { error } = await supabase.rpc("publish_tasting_results", {
+      p_tasting: tastingId,
+    });
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   revalidatePath(`/tastings/${tastingId}`);

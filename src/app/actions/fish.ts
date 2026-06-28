@@ -3,6 +3,38 @@
 import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { parse, fishSchema, reviewSchema } from "@/lib/validation";
+
+/** Read a form field as a string (empty when missing or a file). */
+function str(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === "string" ? v : "";
+}
+
+/** Optional numeric field — empty string becomes undefined for the schema. */
+function optNum(formData: FormData, key: string): string | undefined {
+  const v = str(formData, key);
+  return v === "" ? undefined : v;
+}
+
+/** Confirm the current user is an admin. */
+async function requireAdmin(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be logged in." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) return { ok: false, error: "Admin access required." };
+  return { ok: true };
+}
 
 const FISH_IMAGE_BUCKET = "fish-images";
 const MAX_FISH_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -120,41 +152,24 @@ async function deleteImageIfOrphaned(
 export async function createFish(formData: FormData) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return { error: admin.error };
 
-  if (!user) {
-    return { error: "You must be logged in." };
-  }
-
-  // Check admin status
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    return { error: "Admin access required." };
-  }
-
-  const name = formData.get("name") as string;
-  const brand = formData.get("brand") as string;
-  const fish_type = formData.get("fish_type") as string;
-  const price_usd = parseFloat(formData.get("price_usd") as string);
-  const weight_g = parseFloat(formData.get("weight_g") as string);
-  const calories = parseFloat(formData.get("calories") as string);
-  const protein_g = parseFloat(formData.get("protein_g") as string);
-  const fat_g = formData.get("fat_g") ? parseFloat(formData.get("fat_g") as string) : null;
-  const sodium_mg = formData.get("sodium_mg") ? parseFloat(formData.get("sodium_mg") as string) : null;
-  const salt_level = (formData.get("salt_level") as string) || "salted";
-  const description = (formData.get("description") as string) || null;
-  const sourcing_notes = (formData.get("sourcing_notes") as string) || null;
-
-  if (!name || !brand || !fish_type || !price_usd || !weight_g || !calories || !protein_g) {
-    return { error: "Required fields: name, brand, type, price, weight, calories, protein." };
-  }
+  const parsed = parse(fishSchema, {
+    name: str(formData, "name"),
+    brand: str(formData, "brand"),
+    fish_type: str(formData, "fish_type"),
+    price_usd: str(formData, "price_usd"),
+    weight_g: str(formData, "weight_g"),
+    calories: str(formData, "calories"),
+    protein_g: str(formData, "protein_g"),
+    fat_g: optNum(formData, "fat_g"),
+    sodium_mg: optNum(formData, "sodium_mg"),
+    salt_level: str(formData, "salt_level") || "salted",
+    description: str(formData, "description"),
+    sourcing_notes: str(formData, "sourcing_notes"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
 
   // Upload image first (content-addressed + deduplicated), then store its URL.
   const imageFile = formData.get("image") as File | null;
@@ -171,24 +186,13 @@ export async function createFish(formData: FormData) {
     }
   }
 
-  const { error } = await supabase.from("fish").insert({
-    name,
-    brand,
-    fish_type,
-    price_usd,
-    weight_g,
-    calories,
-    protein_g,
-    fat_g,
-    sodium_mg,
-    salt_level,
-    description,
-    sourcing_notes,
-    image_url,
-  });
-
-  if (error) {
-    return { error: error.message };
+  try {
+    const { error } = await supabase
+      .from("fish")
+      .insert({ ...parsed.data, image_url });
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   redirect("/fish");
@@ -197,40 +201,24 @@ export async function createFish(formData: FormData) {
 export async function updateFish(fishId: string, formData: FormData) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const admin = await requireAdmin(supabase);
+  if (!admin.ok) return { error: admin.error };
 
-  if (!user) {
-    return { error: "You must be logged in." };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.is_admin) {
-    return { error: "Admin access required." };
-  }
-
-  const name = formData.get("name") as string;
-  const brand = formData.get("brand") as string;
-  const fish_type = formData.get("fish_type") as string;
-  const price_usd = parseFloat(formData.get("price_usd") as string);
-  const weight_g = parseFloat(formData.get("weight_g") as string);
-  const calories = parseFloat(formData.get("calories") as string);
-  const protein_g = parseFloat(formData.get("protein_g") as string);
-  const fat_g = formData.get("fat_g") ? parseFloat(formData.get("fat_g") as string) : null;
-  const sodium_mg = formData.get("sodium_mg") ? parseFloat(formData.get("sodium_mg") as string) : null;
-  const salt_level = (formData.get("salt_level") as string) || "salted";
-  const description = (formData.get("description") as string) || null;
-  const sourcing_notes = (formData.get("sourcing_notes") as string) || null;
-
-  if (!name || !brand || !fish_type || !price_usd || !weight_g || !calories || !protein_g) {
-    return { error: "Required fields: name, brand, type, price, weight, calories, protein." };
-  }
+  const parsed = parse(fishSchema, {
+    name: str(formData, "name"),
+    brand: str(formData, "brand"),
+    fish_type: str(formData, "fish_type"),
+    price_usd: str(formData, "price_usd"),
+    weight_g: str(formData, "weight_g"),
+    calories: str(formData, "calories"),
+    protein_g: str(formData, "protein_g"),
+    fat_g: optNum(formData, "fat_g"),
+    sodium_mg: optNum(formData, "sodium_mg"),
+    salt_level: str(formData, "salt_level") || "salted",
+    description: str(formData, "description"),
+    sourcing_notes: str(formData, "sourcing_notes"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
 
   // Capture the current image so we can clean it up if it gets replaced.
   const { data: existing } = await supabase
@@ -256,27 +244,17 @@ export async function updateFish(fishId: string, formData: FormData) {
     image_url = url;
   }
 
-  const { error } = await supabase
-    .from("fish")
-    .update({
-      name,
-      brand,
-      fish_type,
-      price_usd,
-      weight_g,
-      calories,
-      protein_g,
-      fat_g,
-      sodium_mg,
-      salt_level,
-      description,
-      sourcing_notes,
-      ...(image_url ? { image_url } : {}),
-    })
-    .eq("id", fishId);
-
-  if (error) {
-    return { error: error.message };
+  try {
+    const { error } = await supabase
+      .from("fish")
+      .update({
+        ...parsed.data,
+        ...(image_url ? { image_url } : {}),
+      })
+      .eq("id", fishId);
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
   // If the image was replaced with a different one, delete the old file —
@@ -299,37 +277,30 @@ export async function submitReview(formData: FormData) {
     return { error: "You must be logged in to submit a review." };
   }
 
-  const fish_id = formData.get("fish_id") as string;
-  const flavor_score = parseInt(formData.get("flavor_score") as string);
-  const texture_score = parseInt(formData.get("texture_score") as string);
-  const value_score = parseInt(formData.get("value_score") as string);
-  const overall_score = parseInt(formData.get("overall_score") as string);
-  const notes = (formData.get("notes") as string) || null;
+  const parsed = parse(reviewSchema, {
+    fish_id: str(formData, "fish_id"),
+    flavor_score: str(formData, "flavor_score"),
+    texture_score: str(formData, "texture_score"),
+    value_score: str(formData, "value_score"),
+    overall_score: str(formData, "overall_score"),
+    notes: str(formData, "notes"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
 
-  if (
-    !fish_id ||
-    [flavor_score, texture_score, value_score, overall_score].some(
-      Number.isNaN
-    )
-  ) {
-    return { error: "Please set all four scores." };
+  try {
+    const { error } = await supabase.from("reviews").upsert(
+      {
+        user_id: user.id,
+        ...parsed.data,
+        is_from_tasting: false,
+        tasting_id: null,
+      },
+      { onConflict: "user_id,fish_id" }
+    );
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
   }
 
-  const { error } = await supabase.from("reviews").upsert({
-    user_id: user.id,
-    fish_id,
-    flavor_score,
-    texture_score,
-    value_score,
-    overall_score,
-    notes,
-    is_from_tasting: false,
-    tasting_id: null,
-  }, { onConflict: "user_id,fish_id" });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  redirect(`/fish/${fish_id}`);
+  redirect(`/fish/${parsed.data.fish_id}`);
 }
