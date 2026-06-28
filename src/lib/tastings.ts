@@ -74,7 +74,7 @@ export async function getMyBlindResponses(tastingId: string, userId: string) {
   return data ?? [];
 }
 
-/** Public tastings for the hub listing. */
+/** Active public tastings for the hub listing (published ones are hidden). */
 export async function getPublicTastings(): Promise<
   (Tasting & { participant_count: number })[]
 > {
@@ -83,6 +83,7 @@ export async function getPublicTastings(): Promise<
     .from("tastings")
     .select("*, tasting_participants(count)")
     .eq("is_public", true)
+    .neq("state", "published")
     .order("created_at", { ascending: false });
 
   return (
