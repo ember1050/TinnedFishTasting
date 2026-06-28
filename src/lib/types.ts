@@ -49,7 +49,7 @@ export interface Review {
   fish_id: string;
   flavor_score: number;
   texture_score: number;
-  aesthetics_score: number;
+  aesthetics_score?: number | null;
   value_score: number | null;
   overall_score: number;
   notes: string | null;
@@ -92,7 +92,6 @@ export interface BlindResponse {
   blind_number: number;
   flavor_score: number | null;
   texture_score: number | null;
-  aesthetics_score: number | null;
   overall_score: number | null;
   notes: string | null;
   review_text: string | null;
@@ -105,7 +104,6 @@ export interface FishWithStats extends Fish {
   avg_overall: number | null;
   avg_flavor: number | null;
   avg_texture: number | null;
-  avg_aesthetics: number | null;
   avg_value: number | null;
   review_count: number;
   tasting_review_count: number;

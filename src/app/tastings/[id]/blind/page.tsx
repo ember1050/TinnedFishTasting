@@ -48,7 +48,6 @@ export default async function BlindPage({
     initial[r.blind_number] = {
       flavor_score: r.flavor_score,
       texture_score: r.texture_score,
-      aesthetics_score: r.aesthetics_score,
       overall_score: r.overall_score,
       notes: r.notes ?? "",
       review_text: r.review_text ?? "",

@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { saveBlindResponse } from "@/app/actions/tasting";
+import { RatingSlider } from "@/components/RatingSlider";
 
 interface TinState {
   flavor_score: number | null;
   texture_score: number | null;
-  aesthetics_score: number | null;
   overall_score: number | null;
   notes: string;
   review_text: string;
@@ -17,41 +17,10 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 const EMPTY: TinState = {
   flavor_score: null,
   texture_score: null,
-  aesthetics_score: null,
   overall_score: null,
   notes: "",
   review_text: "",
 };
-
-function Slider({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm font-bold text-blue-700">
-          {value ?? "–"}
-          {value !== null && "/10"}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={1}
-        max={10}
-        value={value ?? 5}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      />
-    </div>
-  );
-}
 
 export function BlindTasting({
   tastingId,
@@ -80,15 +49,11 @@ export function BlindTasting({
         const res = await saveBlindResponse(tastingId, n, {
           flavor_score: next.flavor_score,
           texture_score: next.texture_score,
-          aesthetics_score: next.aesthetics_score,
           overall_score: next.overall_score,
           notes: next.notes || null,
           review_text: next.review_text || null,
         });
-        setStatus((s) => ({
-          ...s,
-          [n]: res?.error ? "error" : "saved",
-        }));
+        setStatus((s) => ({ ...s, [n]: res?.error ? "error" : "saved" }));
       }, 700);
     },
     [tastingId]
@@ -98,9 +63,8 @@ export function BlindTasting({
     (n: number, patch: Partial<TinState>) => {
       setTins((prev) => {
         const next = { ...prev[n], ...patch };
-        const all = { ...prev, [n]: next };
         scheduleSave(n, next);
-        return all;
+        return { ...prev, [n]: next };
       });
     },
     [scheduleSave]
@@ -118,6 +82,10 @@ export function BlindTasting({
       {blindNumbers.map((n) => {
         const tin = tins[n];
         const st = status[n] ?? "idle";
+        const complete =
+          tin.flavor_score !== null &&
+          tin.texture_score !== null &&
+          tin.overall_score !== null;
         return (
           <div key={n} className="rounded-xl border p-5">
             <div className="flex items-center justify-between mb-4">
@@ -136,28 +104,29 @@ export function BlindTasting({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <Slider
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <RatingSlider
                 label="Flavor"
                 value={tin.flavor_score}
                 onChange={(v) => update(n, { flavor_score: v })}
               />
-              <Slider
+              <RatingSlider
                 label="Texture"
                 value={tin.texture_score}
                 onChange={(v) => update(n, { texture_score: v })}
               />
-              <Slider
-                label="Aesthetics"
-                value={tin.aesthetics_score}
-                onChange={(v) => update(n, { aesthetics_score: v })}
-              />
-              <Slider
+              <RatingSlider
                 label="Overall"
                 value={tin.overall_score}
                 onChange={(v) => update(n, { overall_score: v })}
               />
             </div>
+
+            {!complete && (
+              <p className="mb-4 text-xs text-amber-700">
+                Move all three sliders so this tin&apos;s review gets published.
+              </p>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

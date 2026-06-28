@@ -26,7 +26,7 @@ export async function getAllFishWithStats(): Promise<FishWithStats[]> {
   const fishIds = fish.map((f) => f.id);
   const { data: reviews } = await supabase
     .from("reviews")
-    .select("fish_id, flavor_score, texture_score, aesthetics_score, value_score, overall_score, is_from_tasting")
+    .select("fish_id, flavor_score, texture_score, value_score, overall_score, is_from_tasting")
     .in("fish_id", fishIds);
 
   return fish.map((f) => {
@@ -39,7 +39,6 @@ export async function getAllFishWithStats(): Promise<FishWithStats[]> {
         avg_overall: null,
         avg_flavor: null,
         avg_texture: null,
-        avg_aesthetics: null,
         avg_value: null,
         review_count: 0,
         tasting_review_count: 0,
@@ -58,7 +57,6 @@ export async function getAllFishWithStats(): Promise<FishWithStats[]> {
       avg_overall: avg(fishReviews.map((r) => r.overall_score)),
       avg_flavor: avg(fishReviews.map((r) => r.flavor_score)),
       avg_texture: avg(fishReviews.map((r) => r.texture_score)),
-      avg_aesthetics: avg(fishReviews.map((r) => r.aesthetics_score)),
       avg_value: avgNullable(fishReviews.map((r) => r.value_score)),
       review_count: count,
       tasting_review_count: fishReviews.filter((r) => r.is_from_tasting).length,

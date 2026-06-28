@@ -179,7 +179,6 @@ export async function saveBlindResponse(
   payload: {
     flavor_score?: number | null;
     texture_score?: number | null;
-    aesthetics_score?: number | null;
     overall_score?: number | null;
     notes?: string | null;
     review_text?: string | null;

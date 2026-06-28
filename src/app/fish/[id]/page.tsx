@@ -167,7 +167,6 @@ export default async function FishDetailPage({
                 axes={[
                   { label: "Flavor", value: stats.avg_flavor },
                   { label: "Texture", value: stats.avg_texture },
-                  { label: "Aesthetics", value: stats.avg_aesthetics },
                   { label: "Value", value: stats.avg_value },
                   { label: "Overall", value: stats.avg_overall },
                 ]}
@@ -179,7 +178,6 @@ export default async function FishDetailPage({
               {[
                 { label: "Flavor", value: stats.avg_flavor },
                 { label: "Texture", value: stats.avg_texture },
-                { label: "Aesthetics", value: stats.avg_aesthetics },
                 { label: "Value", value: stats.avg_value },
                 { label: "Overall", value: stats.avg_overall },
               ].map(({ label, value }) => (
@@ -294,8 +292,10 @@ export default async function FishDetailPage({
                 <div className="flex gap-4 text-xs text-gray-400">
                   <span>Flavor: {review.flavor_score}</span>
                   <span>Texture: {review.texture_score}</span>
-                  <span>Aesthetics: {review.aesthetics_score}</span>
-                  <span>Value: {review.value_score}</span>
+                  {review.value_score !== null &&
+                    review.value_score !== undefined && (
+                      <span>Value: {review.value_score}</span>
+                    )}
                 </div>
               </div>
             ))}

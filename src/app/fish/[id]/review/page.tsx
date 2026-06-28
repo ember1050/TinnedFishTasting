@@ -5,56 +5,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { submitReview } from "@/app/actions/fish";
 import { createBrowserClient } from "@supabase/ssr";
+import { RatingSlider } from "@/components/RatingSlider";
 
 interface FishBasic {
   id: string;
   name: string;
   brand: string;
   fish_type: string;
-}
-
-interface ExistingReview {
-  flavor_score: number;
-  texture_score: number;
-  aesthetics_score: number;
-  value_score: number;
-  overall_score: number;
-  notes: string | null;
-}
-
-function ScoreSlider({
-  name,
-  label,
-  value,
-  onChange,
-}: {
-  name: string;
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-1">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-sm font-bold text-blue-700">{value}/10</span>
-      </div>
-      <input
-        type="range"
-        name={name}
-        min={1}
-        max={10}
-        value={value}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-      />
-      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-        <span>1</span>
-        <span>5</span>
-        <span>10</span>
-      </div>
-    </div>
-  );
 }
 
 export default function ReviewPage({
@@ -64,14 +21,13 @@ export default function ReviewPage({
 }) {
   const [fishId, setFishId] = useState("");
   const [fish, setFish] = useState<FishBasic | null>(null);
-  const [existingReview, setExistingReview] = useState<ExistingReview | null>(null);
+  const [hasExisting, setHasExisting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [flavor, setFlavor] = useState(5);
-  const [texture, setTexture] = useState(5);
-  const [aesthetics, setAesthetics] = useState(5);
-  const [value, setValue] = useState(5);
-  const [overall, setOverall] = useState(5);
+  const [flavor, setFlavor] = useState<number | null>(null);
+  const [texture, setTexture] = useState<number | null>(null);
+  const [value, setValue] = useState<number | null>(null);
+  const [overall, setOverall] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -95,14 +51,13 @@ export default function ReviewPage({
         ]);
 
         if (cancelled) return;
-
         setFish(fishData);
 
         const user = userData.user;
         if (user) {
           const { data: reviewData } = await supabase
             .from("reviews")
-            .select("flavor_score, texture_score, aesthetics_score, value_score, overall_score, notes")
+            .select("flavor_score, texture_score, value_score, overall_score, notes")
             .eq("fish_id", id)
             .eq("user_id", user.id)
             .maybeSingle();
@@ -110,12 +65,11 @@ export default function ReviewPage({
           if (cancelled) return;
 
           if (reviewData) {
-            setExistingReview(reviewData);
-            setFlavor(reviewData.flavor_score);
-            setTexture(reviewData.texture_score);
-            setAesthetics(reviewData.aesthetics_score);
-            setValue(reviewData.value_score);
-            setOverall(reviewData.overall_score);
+            setHasExisting(true);
+            setFlavor(reviewData.flavor_score ?? null);
+            setTexture(reviewData.texture_score ?? null);
+            setValue(reviewData.value_score ?? null);
+            setOverall(reviewData.overall_score ?? null);
             setNotes(reviewData.notes ?? "");
           }
         }
@@ -154,6 +108,9 @@ export default function ReviewPage({
     );
   }
 
+  const allSet =
+    flavor !== null && texture !== null && value !== null && overall !== null;
+
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-8">
       <Link
@@ -174,51 +131,34 @@ export default function ReviewPage({
         </div>
       )}
 
-      {existingReview && (
+      {hasExisting && (
         <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          You already have a review for this fish. Submitting will replace your existing review.
+          You already have a review for this fish. Submitting will replace your
+          existing review.
         </div>
       )}
 
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="fish_id" value={fishId} />
+        <input type="hidden" name="flavor_score" value={flavor ?? ""} />
+        <input type="hidden" name="texture_score" value={texture ?? ""} />
+        <input type="hidden" name="value_score" value={value ?? ""} />
+        <input type="hidden" name="overall_score" value={overall ?? ""} />
 
         {/* Score sliders */}
         <div className="space-y-5 bg-gray-50 rounded-lg p-6">
           <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-2">
             Scores
           </h2>
-          <ScoreSlider
-            name="flavor_score"
-            label="Flavor"
-            value={flavor}
-            onChange={setFlavor}
-          />
-          <ScoreSlider
-            name="texture_score"
-            label="Texture"
-            value={texture}
-            onChange={setTexture}
-          />
-          <ScoreSlider
-            name="aesthetics_score"
-            label="Aesthetics"
-            value={aesthetics}
-            onChange={setAesthetics}
-          />
-          <ScoreSlider
-            name="value_score"
+          <RatingSlider label="Flavor" value={flavor} onChange={setFlavor} />
+          <RatingSlider label="Texture" value={texture} onChange={setTexture} />
+          <RatingSlider
             label="Value for Money"
             value={value}
             onChange={setValue}
           />
           <div className="pt-3 border-t">
-            <ScoreSlider
-              name="overall_score"
-              label="Overall"
-              value={overall}
-              onChange={setOverall}
-            />
+            <RatingSlider label="Overall" value={overall} onChange={setOverall} />
           </div>
         </div>
 
@@ -237,13 +177,23 @@ export default function ReviewPage({
           />
         </div>
 
+        {!allSet && (
+          <p className="text-sm text-amber-700">
+            Move every slider to set all four scores before submitting.
+          </p>
+        )}
+
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !allSet}
             className="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
           >
-            {pending ? "Submitting..." : existingReview ? "Update Review" : "Submit Review"}
+            {pending
+              ? "Submitting..."
+              : hasExisting
+                ? "Update Review"
+                : "Submit Review"}
           </button>
           <Link
             href={`/fish/${fishId}`}

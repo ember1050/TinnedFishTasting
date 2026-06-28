@@ -302,13 +302,17 @@ export async function submitReview(formData: FormData) {
   const fish_id = formData.get("fish_id") as string;
   const flavor_score = parseInt(formData.get("flavor_score") as string);
   const texture_score = parseInt(formData.get("texture_score") as string);
-  const aesthetics_score = parseInt(formData.get("aesthetics_score") as string);
   const value_score = parseInt(formData.get("value_score") as string);
   const overall_score = parseInt(formData.get("overall_score") as string);
   const notes = (formData.get("notes") as string) || null;
 
-  if (!fish_id || !flavor_score || !texture_score || !aesthetics_score || !value_score || !overall_score) {
-    return { error: "All score fields are required." };
+  if (
+    !fish_id ||
+    [flavor_score, texture_score, value_score, overall_score].some(
+      Number.isNaN
+    )
+  ) {
+    return { error: "Please set all four scores." };
   }
 
   const { error } = await supabase.from("reviews").upsert({
@@ -316,7 +320,6 @@ export async function submitReview(formData: FormData) {
     fish_id,
     flavor_score,
     texture_score,
-    aesthetics_score,
     value_score,
     overall_score,
     notes,
