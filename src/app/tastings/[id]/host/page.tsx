@@ -105,10 +105,10 @@ export default async function HostControlPage({
       <TastingRealtime tastingId={id} />
 
       <Link
-        href={`/tastings/${id}`}
+        href="/tastings"
         className="text-sm text-blue-600 hover:underline mb-4 inline-block"
       >
-        ← Back to tasting
+        ← Back to tastings
       </Link>
 
       <h1 className="text-3xl font-bold mb-1">Host Controls</h1>

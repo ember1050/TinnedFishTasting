@@ -14,6 +14,10 @@ export default async function TastingsPage() {
     user ? getMyTastings(user.id) : Promise.resolve([]),
   ]);
 
+  // The hub only surfaces tastings still in progress; finished ones live on the
+  // profile.
+  const activeTastings = myTastings.filter((t) => t.state !== "published");
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -26,12 +30,12 @@ export default async function TastingsPage() {
         </Link>
       </div>
 
-      {/* My tastings */}
-      {myTastings.length > 0 && (
+      {/* My tastings (active only) */}
+      {activeTastings.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">My Tastings</h2>
+          <h2 className="text-xl font-semibold mb-4">My Active Tastings</h2>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myTastings.map((t) => (
+            {activeTastings.map((t) => (
               <li key={t.id}>
                 <Link
                   href={`/tastings/${t.id}`}

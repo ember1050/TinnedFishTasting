@@ -1,9 +1,12 @@
 "use client";
 
+import { useRef } from "react";
+
 /**
- * A 0–10 rating slider. The midpoint (5) sits dead-center, and an unset score
- * (value === null) shows a centered thumb with a "–" readout until the user
- * moves it — so "not yet rated" is visually distinct from a real 5.
+ * A 1–10 rating slider. Before it's set (value === null) the thumb starts
+ * dead-center with a "–" readout, so "not yet rated" reads as a neutral middle
+ * position; moving it snaps to integers 1–10. Built custom (not a native range)
+ * so the unset thumb can sit at exactly 50%.
  */
 export function RatingSlider({
   label,
@@ -16,6 +19,17 @@ export function RatingSlider({
   onChange: (v: number) => void;
   hint?: string;
 }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pct = value === null ? 50 : ((value - 1) / 9) * 100;
+
+  function setFromClientX(clientX: number) {
+    const el = trackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    onChange(Math.round(1 + ratio * 9));
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
@@ -31,19 +45,50 @@ export function RatingSlider({
           {value === null ? "–" : `${value}/10`}
         </span>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={10}
-        step={1}
-        value={value ?? 5}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+
+      <div
+        ref={trackRef}
+        role="slider"
         aria-label={label}
-      />
+        aria-valuemin={1}
+        aria-valuemax={10}
+        aria-valuenow={value ?? undefined}
+        tabIndex={0}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          setFromClientX(e.clientX);
+        }}
+        onPointerMove={(e) => {
+          if (e.buttons === 1) setFromClientX(e.clientX);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+            onChange(Math.min(10, (value ?? 5) + 1));
+            e.preventDefault();
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+            onChange(Math.max(1, (value ?? 6) - 1));
+            e.preventDefault();
+          }
+        }}
+        className="relative h-6 cursor-pointer select-none touch-none"
+      >
+        <div className="absolute top-1/2 left-0 right-0 h-2 -translate-y-1/2 rounded-full bg-gray-200" />
+        {value !== null && (
+          <div
+            className="absolute top-1/2 left-0 h-2 -translate-y-1/2 rounded-full bg-blue-500"
+            style={{ width: `${pct}%` }}
+          />
+        )}
+        <div
+          className={`absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ${
+            value === null ? "bg-gray-400" : "bg-blue-600"
+          }`}
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+
       <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-        <span>0</span>
-        <span>5</span>
+        <span>1</span>
         <span>10</span>
       </div>
     </div>

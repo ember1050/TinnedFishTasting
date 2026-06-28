@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   getTastingContext,
   getParticipants,
@@ -9,7 +9,7 @@ import {
 import { TastingRealtime } from "@/components/TastingRealtime";
 import { JoinPublicButton } from "@/components/JoinPublicButton";
 import { LeaveButton } from "@/components/LeaveButton";
-import { fishTypeBadgeClasses } from "@/lib/fish-display";
+import { FishBaseballCards } from "@/components/FishBaseballCards";
 import type { Fish } from "@/lib/types";
 
 export default async function TastingLobbyPage({
@@ -20,6 +20,11 @@ export default async function TastingLobbyPage({
   const { id } = await params;
   const ctx = await getTastingContext(id);
   if (!ctx) notFound();
+
+  // The host's default view is the control panel, not the participant lobby.
+  if (ctx.isHost) {
+    redirect(`/tastings/${id}/host`);
+  }
 
   const { tasting, isHost, isParticipant, userId } = ctx;
   const [participants, fish] = await Promise.all([
@@ -143,29 +148,6 @@ export default async function TastingLobbyPage({
   );
 }
 
-function FishCards({ fish }: { fish: Fish[] }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-      {fish.map((f) => (
-        <div
-          key={f.id}
-          className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm"
-        >
-          <span className="font-medium">{f.name}</span>
-          <span className="text-gray-400">{f.brand}</span>
-          <span
-            className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium capitalize ${fishTypeBadgeClasses(
-              f.fish_type
-            )}`}
-          >
-            {f.fish_type}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function StageAction({
   state,
   tastingId,
@@ -210,7 +192,7 @@ function StageAction({
             Blind scoring is locked. Here are the fish in this tasting — follow
             along as the host introduces them. Guessing opens next.
           </div>
-          <FishCards fish={candidateFish} />
+          <FishBaseballCards fish={candidateFish} />
         </div>
       );
     case "guessing_active":
