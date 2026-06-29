@@ -57,8 +57,30 @@ export async function updateEmail(formData: FormData) {
 
 export async function updatePassword(formData: FormData) {
   const supabase = await createClient();
-  const parsed = z.string().min(8, "Password must be at least 8 characters.").safeParse(str(formData, "password"));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "Not authenticated." };
+
+  const current = str(formData, "current_password");
+  const next = str(formData, "password");
+  const confirm = str(formData, "confirm_password");
+
+  if (!current) return { error: "Enter your current password." };
+  const parsed = z
+    .string()
+    .min(8, "Password must be at least 8 characters.")
+    .safeParse(next);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (next !== confirm) return { error: "New passwords don't match." };
+  if (next === current) return { error: "New password must be different." };
+
+  const { error: authErr } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: current,
+  });
+  if (authErr) return { error: "Current password is incorrect." };
+
   try {
     const { error } = await supabase.auth.updateUser({ password: parsed.data });
     if (error) return { error: error.message };

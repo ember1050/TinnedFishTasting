@@ -67,7 +67,11 @@ export function ProfileSettings({
 
       <form action={pAction} className={box}>
         <h2 className="font-semibold mb-2">Password</h2>
-        <input name="password" type="password" placeholder="New password" className={input} />
+        <div className="space-y-2">
+          <input name="current_password" type="password" autoComplete="current-password" placeholder="Current password" className={input} />
+          <input name="password" type="password" autoComplete="new-password" placeholder="New password" className={input} />
+          <input name="confirm_password" type="password" autoComplete="new-password" placeholder="Confirm new password" className={input} />
+        </div>
         <div className="mt-3"><button className={btn} disabled={pPending}>{pPending ? "Saving…" : "Change password"}</button></div>
         <Msg s={pState} />
       </form>
