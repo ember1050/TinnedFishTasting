@@ -64,8 +64,17 @@ export default async function ProfilePage({
         {/* Profile Card */}
         <div className="md:col-span-1">
           <div className="border rounded-lg p-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl mb-4">
-              🐟
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl mb-4 overflow-hidden">
+              {profile?.avatar_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={profile.avatar_url}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                "🐟"
+              )}
             </div>
             <h2 className="text-xl font-bold">
               {profile?.display_name ?? "User"}
@@ -79,6 +88,12 @@ export default async function ProfilePage({
                 Admin
               </span>
             )}
+            <Link
+              href="/profile/settings"
+              className="block mt-3 text-sm text-blue-600 hover:underline"
+            >
+              Edit profile & settings →
+            </Link>
 
             <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
               <div>

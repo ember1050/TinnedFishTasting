@@ -277,9 +277,12 @@ export default async function FishDetailPage({
               <div key={review.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">
+                    <Link
+                      href={`/users/${review.user_id}`}
+                      className="font-medium text-sm text-blue-600 hover:underline"
+                    >
                       {review.user_name}
-                    </span>
+                    </Link>
                     {review.is_from_tasting && (
                       <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                         ✓ Verified Tasting

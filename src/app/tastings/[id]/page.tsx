@@ -99,15 +99,16 @@ export default async function TastingLobbyPage({
         <h2 className="text-lg font-semibold mb-3">Participants</h2>
         <div className="flex flex-wrap gap-2">
           {participants.map((p) => (
-            <span
+            <Link
               key={p.user_id}
-              className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm"
+              href={`/users/${p.user_id}`}
+              className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200"
             >
               {p.display_name}
               {p.user_id === tasting.host_user_id && (
                 <span className="ml-1 text-xs text-gray-400">(host)</span>
               )}
-            </span>
+            </Link>
           ))}
         </div>
       </section>

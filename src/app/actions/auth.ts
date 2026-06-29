@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parse, signupSchema, loginSchema, resetSchema } from "@/lib/validation";
@@ -83,13 +84,17 @@ export async function resetPassword(formData: FormData) {
   const parsed = parse(resetSchema, { email: str(formData, "email") });
   if (!parsed.ok) return { error: parsed.error };
 
+  // Send the recovery link back to OUR app's confirm page, not Supabase.
+  const hdrs = await headers();
+  const origin =
+    hdrs.get("origin") ||
+    (hdrs.get("host") ? `https://${hdrs.get("host")}` : "");
+
   const supabase = await createClient();
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(
       parsed.data.email,
-      {
-        redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/callback`,
-      }
+      { redirectTo: `${origin}/auth/reset/confirm` }
     );
     if (error) return { error: error.message };
   } catch {
