@@ -92,7 +92,7 @@ export async function getReviewsForFish(
 
   const { data, count, error } = await supabase
     .from("reviews")
-    .select("*, profiles(display_name)", { count: "exact" })
+    .select("*, profiles!reviews_user_id_fkey(display_name)", { count: "exact" })
     .eq("fish_id", fishId)
     .order("created_at", { ascending: false })
     .range(from, to);
