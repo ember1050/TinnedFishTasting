@@ -1,12 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Fish, FishWithStats } from "@/lib/types";
-import { getMockFishWithStats, getMockFishById, getMockReviewsForFish } from "@/lib/mock-data";
 
 /**
- * Data access layer — queries Supabase when available,
- * falls back to mock data if the DB is empty.
- *
- * TODO: Remove mock fallbacks once real data is populated.
+ * Data access layer — queries Supabase for live data.
  */
 
 export async function getAllFishWithStats(): Promise<FishWithStats[]> {
@@ -17,9 +13,8 @@ export async function getAllFishWithStats(): Promise<FishWithStats[]> {
     .select("*")
     .order("created_at", { ascending: false });
 
-  // If no fish in DB yet, fall back to mock data
   if (error || !fish || fish.length === 0) {
-    return getMockFishWithStats();
+    return [];
   }
 
   // Fetch review stats for each fish
@@ -74,8 +69,7 @@ export async function getFishById(id: string): Promise<Fish | null> {
     .single();
 
   if (error || !data) {
-    // Fall back to mock data
-    return getMockFishById(id) || null;
+    return null;
   }
 
   return data;
@@ -97,8 +91,7 @@ export async function getReviewsForFish(
     .limit(500);
 
   if (error || !data || data.length === 0) {
-    const mock = getMockReviewsForFish(fishId);
-    return { reviews: mock, total: mock.length, page, pageSize };
+    return { reviews: [], total: 0, page, pageSize };
   }
 
   // Tally votes across all reviews + the viewer's own votes (small dataset).
