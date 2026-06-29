@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { saveGuess } from "@/app/actions/tasting";
+import { useCallback, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { saveGuess, submitGuesses } from "@/app/actions/tasting";
 
 interface Candidate {
   fish_id: string;
@@ -20,11 +21,16 @@ export function GuessGame({
   tastingId,
   tins,
   candidates,
+  submitted,
 }: {
   tastingId: string;
   tins: { blind_number: number; notes: string; primary: string; alternate: string }[];
   candidates: Candidate[];
+  submitted: boolean;
 }) {
+  const router = useRouter();
+  const [locked, setLocked] = useState(submitted);
+  const [submitting, startSubmit] = useTransition();
   const [guesses, setGuesses] = useState<Record<number, TinGuess>>(() => {
     const out: Record<number, TinGuess> = {};
     for (const t of tins) {
@@ -39,8 +45,11 @@ export function GuessGame({
   const [status, setStatus] = useState<Record<number, SaveStatus>>({});
   const timers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
+  const allPrimaryChosen = tins.every((t) => guesses[t.blind_number]?.primary);
+
   const update = useCallback(
     (n: number, patch: Partial<TinGuess>) => {
+      if (locked) return;
       setGuesses((prev) => {
         const next = { ...prev[n], ...patch };
         setStatus((s) => ({ ...s, [n]: "saving" }));
@@ -57,7 +66,7 @@ export function GuessGame({
         return { ...prev, [n]: next };
       });
     },
-    [tastingId]
+    [tastingId, locked]
   );
 
   return (
@@ -101,8 +110,9 @@ export function GuessGame({
                 </label>
                 <select
                   value={g.primary}
+                  disabled={locked}
                   onChange={(e) => update(t.blind_number, { primary: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                 >
                   <option value="">— Select —</option>
                   {candidates
@@ -123,10 +133,11 @@ export function GuessGame({
                 </label>
                 <select
                   value={g.alternate}
+                  disabled={locked}
                   onChange={(e) =>
                     update(t.blind_number, { alternate: e.target.value })
                   }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
                 >
                   <option value="">— Select —</option>
                   {candidates
@@ -142,6 +153,35 @@ export function GuessGame({
           </div>
         );
       })}
+
+      {locked ? (
+        <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-center text-sm text-green-800">
+          ✓ Your guesses are locked in. Waiting for the host to release results.
+        </div>
+      ) : (
+        <div className="flex items-center justify-end gap-3">
+          {!allPrimaryChosen && (
+            <span className="text-sm text-gray-400">
+              Pick a first guess for every tin to submit.
+            </span>
+          )}
+          <button
+            disabled={!allPrimaryChosen || submitting}
+            onClick={() =>
+              startSubmit(async () => {
+                const res = await submitGuesses(tastingId);
+                if (!res?.error) {
+                  setLocked(true);
+                  router.refresh();
+                }
+              })
+            }
+            className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {submitting ? "Submitting…" : "Submit answers"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

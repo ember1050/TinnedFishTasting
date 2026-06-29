@@ -332,6 +332,16 @@ export async function saveGuess(
     return { error: "Guessing is not currently open." };
   }
 
+  const { data: participant } = await supabase
+    .from("tasting_participants")
+    .select("guesses_submitted_at")
+    .eq("tasting_id", tastingId)
+    .eq("user_id", user.id)
+    .single();
+  if (participant?.guesses_submitted_at) {
+    return { error: "Your guesses are locked in." };
+  }
+
   try {
     const { error } = await supabase.from("blind_responses").upsert(
       {
@@ -376,4 +386,62 @@ export async function publishResults(tastingId: string) {
   revalidatePath(`/tastings/${tastingId}/host`);
   revalidatePath(`/tastings/${tastingId}/results`);
   return { success: true };
+}
+
+/** Participant locks in their guesses (no more edits). */
+export async function submitGuesses(tastingId: string) {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Not authenticated." };
+  if (!uuidSchema.safeParse(tastingId).success) return { error: "Invalid tasting." };
+
+  const { data: t } = await supabase.from("tastings").select("state").eq("id", tastingId).single();
+  if (t?.state !== "guessing_active") return { error: "Guessing is not open." };
+
+  try {
+    const { error } = await supabase
+      .from("tasting_participants")
+      .update({ guesses_submitted_at: new Date().toISOString() })
+      .eq("tasting_id", tastingId)
+      .eq("user_id", user.id);
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
+  revalidatePath(`/tastings/${tastingId}`);
+  revalidatePath(`/tastings/${tastingId}/host`);
+  return { success: true };
+}
+
+/** Host moves the tasting back one stage (not allowed once published). */
+export async function regressTastingState(tastingId: string) {
+  const { supabase, user } = await requireUser();
+  if (!user) return { error: "Not authenticated." };
+  if (!uuidSchema.safeParse(tastingId).success) return { error: "Invalid tasting." };
+
+  const { data: t } = await supabase
+    .from("tastings").select("state, host_user_id").eq("id", tastingId).single();
+  if (!t) return { error: "Tasting not found." };
+  if (t.host_user_id !== user.id) return { error: "Only the host can do that." };
+  if (t.state === "published") return { error: "A published tasting can't be reopened." };
+
+  const i = STATE_FLOW.indexOf(t.state as TastingState);
+  if (i <= 0) return { error: "Already at the first stage." };
+  const prev = STATE_FLOW[i - 1];
+
+  try {
+    const { error } = await supabase.from("tastings").update({ state: prev }).eq("id", tastingId);
+    if (error) return { error: error.message };
+    // Leaving the guessing stages entirely → unlock submissions so people can re-guess.
+    if (!prev.startsWith("guessing")) {
+      await supabase
+        .from("tasting_participants")
+        .update({ guesses_submitted_at: null })
+        .eq("tasting_id", tastingId);
+    }
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
+  revalidatePath(`/tastings/${tastingId}`);
+  revalidatePath(`/tastings/${tastingId}/host`);
+  return { success: true, state: prev };
 }

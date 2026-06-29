@@ -7,6 +7,7 @@ import {
 } from "@/lib/tastings";
 import { TastingRealtime } from "@/components/TastingRealtime";
 import { GuessGame } from "@/components/GuessGame";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function GuessPage({
   params,
@@ -38,6 +39,16 @@ export default async function GuessPage({
   const fish = await getTastingFish(id);
   const myResponses = await getMyBlindResponses(id, userId);
   const byNumber = new Map(myResponses.map((r) => [r.blind_number, r]));
+
+  // Has this participant locked their guesses?
+  const supabase = await createClient();
+  const { data: meRow } = await supabase
+    .from("tasting_participants")
+    .select("guesses_submitted_at")
+    .eq("tasting_id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const submitted = Boolean(meRow?.guesses_submitted_at);
 
   // Candidate pool — sorted alphabetically so order doesn't leak the mapping.
   const candidates = fish
@@ -74,7 +85,12 @@ export default async function GuessPage({
         save automatically.
       </p>
 
-      <GuessGame tastingId={id} tins={tins} candidates={candidates} />
+      <GuessGame
+        tastingId={id}
+        tins={tins}
+        candidates={candidates}
+        submitted={submitted}
+      />
     </div>
   );
 }

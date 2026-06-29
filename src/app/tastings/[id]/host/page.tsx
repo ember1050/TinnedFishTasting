@@ -8,6 +8,7 @@ import {
 } from "@/lib/tastings";
 import { TastingRealtime } from "@/components/TastingRealtime";
 import { AdvanceButton } from "@/components/AdvanceButton";
+import { RegressButton } from "@/components/RegressButton";
 import type { TastingState } from "@/lib/types";
 
 const FLOW: TastingState[] = [
@@ -65,6 +66,7 @@ export default async function HostControlPage({
       display_name: string;
       scored: number;
       guessed: number;
+      submitted: boolean;
     }[]) ?? [];
 
   const currentIndex = FLOW.indexOf(tasting.state);
@@ -85,7 +87,9 @@ export default async function HostControlPage({
     display_name: string;
     blind_number: number;
     primary_guess: string | null;
+    primary_brand: string | null;
     alternate_guess: string | null;
+    correct: boolean | null;
   }[] = [];
   if (showGuesses) {
     const { data: g } = await supabase.rpc("tasting_guesses", {
@@ -139,11 +143,14 @@ export default async function HostControlPage({
         <p className="text-sm text-gray-500 mb-1">Current stage</p>
         <p className="text-xl font-bold mb-4">{STATE_LABELS[tasting.state]}</p>
         {advance ? (
-          <AdvanceButton
-            tastingId={id}
-            label={advance.label}
-            confirm={advance.confirm}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <AdvanceButton
+              tastingId={id}
+              label={advance.label}
+              confirm={advance.confirm}
+            />
+            {currentIndex > 0 && <RegressButton tastingId={id} />}
+          </div>
         ) : (
           <p className="text-sm text-green-700 font-medium">
             ✓ This tasting is published.{" "}
@@ -201,7 +208,10 @@ export default async function HostControlPage({
                 <span className="font-medium">{r.display_name}</span>
                 <span className="text-gray-500">
                   {showScored && `${r.scored}/${fish.length} scored`}
-                  {showGuessed && `${r.guessed}/${fish.length} guessed`}
+                  {showGuessed &&
+                    `${r.guessed}/${fish.length} guessed${
+                      r.submitted ? " · submitted" : ""
+                    }`}
                   {!showScored && !showGuessed && "—"}
                 </span>
               </div>
@@ -237,9 +247,25 @@ export default async function HostControlPage({
                           <span className="font-medium">
                             {row.primary_guess ?? "—"}
                           </span>
+                          {row.primary_brand && (
+                            <span className="text-gray-400">
+                              {row.primary_brand}
+                            </span>
+                          )}
                           {row.alternate_guess && (
                             <span className="text-gray-400">
                               (backup: {row.alternate_guess})
+                            </span>
+                          )}
+                          {row.correct !== null && (
+                            <span
+                              className={
+                                row.correct
+                                  ? "ml-auto text-green-600"
+                                  : "ml-auto text-red-500"
+                              }
+                            >
+                              {row.correct ? "✓" : "✗"}
                             </span>
                           )}
                         </div>
