@@ -4,7 +4,11 @@ import { logout } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMyTastings, STATE_LABELS } from "@/lib/tastings";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,6 +18,9 @@ export default async function ProfilePage() {
     redirect("/auth/login");
   }
 
+  const pageNum = Math.max(1, parseInt((await searchParams).page ?? "1") || 1);
+  const pageSize = 10;
+
   // Fetch profile
   const { data: profile } = await supabase
     .from("profiles")
@@ -21,12 +28,15 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
-  // Fetch user's reviews with fish name
-  const { data: reviews } = await supabase
+  // Fetch user's reviews with fish name (paginated)
+  const { data: reviews, count: reviewTotal } = await supabase
     .from("reviews")
-    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name)")
+    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name)", {
+      count: "exact",
+    })
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range((pageNum - 1) * pageSize, pageNum * pageSize - 1);
 
   // Fetch tastings the user participated in
   const { data: participations } = await supabase
@@ -36,7 +46,8 @@ export default async function ProfilePage() {
 
   const myTastings = await getMyTastings(user.id);
 
-  const reviewCount = reviews?.length ?? 0;
+  const reviewCount = reviewTotal ?? 0;
+  const totalReviewPages = Math.max(1, Math.ceil(reviewCount / pageSize));
   const tastingCount = participations?.length ?? 0;
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString("en-US", {
@@ -141,6 +152,30 @@ export default async function ProfilePage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {totalReviewPages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+              {pageNum > 1 && (
+                <Link
+                  href={`/profile?page=${pageNum - 1}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  ← Previous
+                </Link>
+              )}
+              <span className="text-gray-500">
+                Page {pageNum} of {totalReviewPages}
+              </span>
+              {pageNum < totalReviewPages && (
+                <Link
+                  href={`/profile?page=${pageNum + 1}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  Next →
+                </Link>
+              )}
             </div>
           )}
 

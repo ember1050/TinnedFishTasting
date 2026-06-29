@@ -5,14 +5,18 @@ import { computeValueMetric } from "@/lib/scoring";
 import { getAdminStatus } from "@/lib/auth-helpers";
 import { fishTypeBadgeClasses } from "@/lib/fish-display";
 import { RadarChart } from "@/components/RadarChart";
+import { ReviewVotes } from "@/components/ReviewVotes";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function FishDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { id } = await params;
+  const pageNum = Math.max(1, parseInt((await searchParams).page ?? "1") || 1);
   const [fish, { isAdmin, userId }] = await Promise.all([
     getFishById(id),
     getAdminStatus(),
@@ -22,10 +26,10 @@ export default async function FishDetailPage({
     notFound();
   }
 
-  const reviews = await getReviewsForFish(id);
-  let hasUserReview = userId ? reviews.some((review) => review.user_id === userId) : false;
-
-  if (userId && reviews.length === 0) {
+  const { reviews, total, pageSize } = await getReviewsForFish(id, pageNum);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  let hasUserReview = false;
+  if (userId) {
     const supabase = await createClient();
     const { data: userReview } = await supabase
       .from("reviews")
@@ -205,7 +209,7 @@ export default async function FishDetailPage({
       {/* Reviews */}
       <section>
         <h2 className="text-xl font-bold mb-4">
-          Reviews ({reviews.length})
+          Reviews ({total})
         </h2>
 
         {/* Review CTA / empty state */}
@@ -230,10 +234,10 @@ export default async function FishDetailPage({
           <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-blue-900">
-                {reviews.length === 0 ? "No reviews yet." : "Tried this fish?"}
+                {total === 0 ? "No reviews yet." : "Tried this fish?"}
               </p>
               <p className="text-sm text-blue-800">
-                {reviews.length === 0
+                {total === 0
                   ? "Be the first to rate this fish."
                   : "Share your thoughts with a review."}
               </p>
@@ -242,17 +246,17 @@ export default async function FishDetailPage({
               href={`/fish/${id}/review`}
               className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
             >
-              {reviews.length === 0 ? "Be the first to review" : "Leave a review"}
+              {total === 0 ? "Be the first to review" : "Leave a review"}
             </Link>
           </div>
         ) : (
           <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-gray-800">
-                {reviews.length === 0 ? "No reviews yet." : "Tried this fish?"}
+                {total === 0 ? "No reviews yet." : "Tried this fish?"}
               </p>
               <p className="text-sm text-gray-600">
-                Log in to {reviews.length === 0 ? "be the first to review it." : "leave a review."}
+                Log in to {total === 0 ? "be the first to review it." : "leave a review."}
               </p>
             </div>
             <Link
@@ -263,7 +267,7 @@ export default async function FishDetailPage({
             </Link>
           </div>
         )}
-        {reviews.length === 0 ? (
+        {total === 0 ? (
           <p className="text-sm text-gray-500">
             Reviews will appear here once someone shares their rating.
           </p>
@@ -289,16 +293,48 @@ export default async function FishDetailPage({
                 {review.notes && (
                   <p className="text-sm text-gray-600 mb-3">{review.notes}</p>
                 )}
-                <div className="flex gap-4 text-xs text-gray-400">
-                  <span>Flavor: {review.flavor_score}</span>
-                  <span>Texture: {review.texture_score}</span>
-                  {review.value_score !== null &&
-                    review.value_score !== undefined && (
-                      <span>Value: {review.value_score}</span>
-                    )}
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-4 text-xs text-gray-400">
+                    <span>Flavor: {review.flavor_score}</span>
+                    <span>Texture: {review.texture_score}</span>
+                    {review.value_score !== null &&
+                      review.value_score !== undefined && (
+                        <span>Value: {review.value_score}</span>
+                      )}
+                  </div>
+                  <ReviewVotes
+                    reviewId={review.id}
+                    net={review.net_votes ?? 0}
+                    mine={review.my_vote ?? 0}
+                    canVote={!!userId}
+                  />
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+            {pageNum > 1 && (
+              <Link
+                href={`/fish/${id}?page=${pageNum - 1}`}
+                className="text-blue-600 hover:underline"
+              >
+                ← Previous
+              </Link>
+            )}
+            <span className="text-gray-500">
+              Page {pageNum} of {totalPages}
+            </span>
+            {pageNum < totalPages && (
+              <Link
+                href={`/fish/${id}?page=${pageNum + 1}`}
+                className="text-blue-600 hover:underline"
+              >
+                Next →
+              </Link>
+            )}
           </div>
         )}
       </section>
