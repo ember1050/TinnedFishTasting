@@ -7,6 +7,17 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-06-29
+
+### Added
+- Admin navigation: an admin-only section in the profile dropdown linking "Manage Fish" and "View Feedback" (both pages were previously unreachable from the UI).
+
+### Changed
+- `/admin/fish` now lists live fish from the database with working edit links (it previously rendered hardcoded prototype data).
+
+### Removed
+- Prototype mock-data fallbacks from the data layer (`mock-data.ts`); the app now relies solely on live data.
+
 ## 2026-06-28
 
 ### Added
