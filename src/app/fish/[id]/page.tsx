@@ -13,10 +13,12 @@ export default async function FishDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; sort?: string }>;
 }) {
   const { id } = await params;
-  const pageNum = Math.max(1, parseInt((await searchParams).page ?? "1") || 1);
+  const sp = await searchParams;
+  const pageNum = Math.max(1, parseInt(sp.page ?? "1") || 1);
+  const sort = sp.sort === "popular" ? "popular" : "newest";
   const [fish, { isAdmin, userId }] = await Promise.all([
     getFishById(id),
     getAdminStatus(),
@@ -26,7 +28,12 @@ export default async function FishDetailPage({
     notFound();
   }
 
-  const { reviews, total, pageSize } = await getReviewsForFish(id, pageNum);
+  const { reviews, total, pageSize } = await getReviewsForFish(
+    id,
+    pageNum,
+    5,
+    sort
+  );
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   let hasUserReview = false;
   if (userId) {
@@ -212,6 +219,33 @@ export default async function FishDetailPage({
           Reviews ({total})
         </h2>
 
+        {total > 1 && (
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            <span className="text-gray-500">Sort:</span>
+            <Link
+              href={`/fish/${id}?sort=newest`}
+              className={
+                sort === "newest"
+                  ? "font-semibold text-blue-700"
+                  : "text-gray-500 hover:underline"
+              }
+            >
+              Newest
+            </Link>
+            <span className="text-gray-300">·</span>
+            <Link
+              href={`/fish/${id}?sort=popular`}
+              className={
+                sort === "popular"
+                  ? "font-semibold text-blue-700"
+                  : "text-gray-500 hover:underline"
+              }
+            >
+              Most popular
+            </Link>
+          </div>
+        )}
+
         {/* Review CTA / empty state */}
         {userId && hasUserReview ? (
           <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-lg flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -288,6 +322,15 @@ export default async function FishDetailPage({
                         ✓ Verified Tasting
                       </span>
                     )}
+                    {review.created_at && (
+                      <span className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    )}
                   </div>
                   <span className="text-lg font-bold text-blue-700">
                     {review.overall_score}/10
@@ -321,7 +364,7 @@ export default async function FishDetailPage({
           <div className="mt-6 flex items-center justify-center gap-4 text-sm">
             {pageNum > 1 && (
               <Link
-                href={`/fish/${id}?page=${pageNum - 1}`}
+                href={`/fish/${id}?sort=${sort}&page=${pageNum - 1}`}
                 className="text-blue-600 hover:underline"
               >
                 ← Previous
@@ -332,7 +375,7 @@ export default async function FishDetailPage({
             </span>
             {pageNum < totalPages && (
               <Link
-                href={`/fish/${id}?page=${pageNum + 1}`}
+                href={`/fish/${id}?sort=${sort}&page=${pageNum + 1}`}
                 className="text-blue-600 hover:underline"
               >
                 Next →

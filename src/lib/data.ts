@@ -84,26 +84,24 @@ export async function getFishById(id: string): Promise<Fish | null> {
 export async function getReviewsForFish(
   fishId: string,
   page = 1,
-  pageSize = 10
+  pageSize = 5,
+  sort: "newest" | "popular" = "newest"
 ) {
   const supabase = await createClient();
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
 
-  const { data, count, error } = await supabase
+  const { data, error } = await supabase
     .from("reviews")
-    .select("*, profiles!reviews_user_id_fkey(display_name)", { count: "exact" })
+    .select("*, profiles!reviews_user_id_fkey(display_name)")
     .eq("fish_id", fishId)
     .order("created_at", { ascending: false })
-    .range(from, to);
+    .limit(500);
 
   if (error || !data || data.length === 0) {
-    if (page > 1) return { reviews: [], total: 0, page, pageSize };
     const mock = getMockReviewsForFish(fishId);
     return { reviews: mock, total: mock.length, page, pageSize };
   }
 
-  // Tally votes for this page of reviews + the viewer's own votes.
+  // Tally votes across all reviews + the viewer's own votes (small dataset).
   const ids = data.map((r) => r.id);
   const [{ data: votes }, { data: auth }] = await Promise.all([
     supabase.from("review_votes").select("review_id, value, user_id").in("review_id", ids),
@@ -117,7 +115,7 @@ export async function getReviewsForFish(
     if (v.user_id === myId) mine.set(v.review_id, v.value);
   }
 
-  const reviews = data.map((r) => ({
+  const enriched = data.map((r) => ({
     ...r,
     user_name:
       (r.profiles as { display_name: string } | null)?.display_name ||
@@ -126,5 +124,15 @@ export async function getReviewsForFish(
     my_vote: mine.get(r.id) ?? 0,
   }));
 
-  return { reviews, total: count ?? reviews.length, page, pageSize };
+  if (sort === "popular") {
+    enriched.sort(
+      (a, b) =>
+        b.net_votes - a.net_votes ||
+        +new Date(b.created_at) - +new Date(a.created_at)
+    );
+  }
+
+  const total = enriched.length;
+  const from = (page - 1) * pageSize;
+  return { reviews: enriched.slice(from, from + pageSize), total, page, pageSize };
 }
