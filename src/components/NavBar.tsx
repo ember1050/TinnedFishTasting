@@ -23,7 +23,7 @@ export async function NavBar() {
     <header className="border-b bg-white sticky top-0 z-50">
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
         <Link href="/" className="text-xl font-bold tracking-tight">
-          🐟 Tinned Fish Tasting
+          🐟 Tinned Fish Rankings
         </Link>
         <div className="flex items-center gap-6">
           <Link
