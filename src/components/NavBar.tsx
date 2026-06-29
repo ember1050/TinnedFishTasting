@@ -8,15 +8,17 @@ export async function NavBar() {
     data: { user },
   } = await supabase.auth.getUser();
   let displayName = user?.email?.split("@")[0] ?? "Profile";
+  let isAdmin = false;
 
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, is_admin")
       .eq("id", user.id)
       .single();
 
     displayName = profile?.display_name || displayName;
+    isAdmin = !!profile?.is_admin;
   }
 
   return (
@@ -39,7 +41,7 @@ export async function NavBar() {
             Tastings
           </Link>
           {user ? (
-            <ProfileMenu displayName={displayName} />
+            <ProfileMenu displayName={displayName} isAdmin={isAdmin} />
           ) : (
             <Link
               href="/auth/login"

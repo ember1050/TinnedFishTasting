@@ -7,9 +7,10 @@ import { FeedbackModal } from "@/components/FeedbackModal";
 
 type ProfileMenuProps = {
   displayName: string;
+  isAdmin?: boolean;
 };
 
-export function ProfileMenu({ displayName }: ProfileMenuProps) {
+export function ProfileMenu({ displayName, isAdmin = false }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -68,6 +69,29 @@ export function ProfileMenu({ displayName }: ProfileMenuProps) {
           >
             Profile
           </Link>
+          {isAdmin && (
+            <>
+              <div className="my-1 border-t" />
+              <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Admin
+              </p>
+              <Link
+                href="/admin/fish"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => setIsOpen(false)}
+              >
+                Manage Fish
+              </Link>
+              <Link
+                href="/admin/feedback"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => setIsOpen(false)}
+              >
+                View Feedback
+              </Link>
+              <div className="my-1 border-t" />
+            </>
+          )}
           <button
             type="button"
             className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
