@@ -7,6 +7,11 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-01
+
+### Added
+- Profile pictures are now automatically downscaled (max 512px) and compressed to WebP in the browser before upload, so large photos no longer fail or waste storage.
+
 ## 2026-06-29
 
 ### Added

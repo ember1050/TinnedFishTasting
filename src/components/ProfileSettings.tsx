@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import {
   updateUsername,
   updateEmail,
   updatePassword,
   uploadAvatar,
 } from "@/app/actions/profile";
+import { downscaleImage } from "@/lib/image-client";
 
 type Res = { error?: string; success?: string } | undefined;
 
@@ -35,6 +36,32 @@ export function ProfileSettings({
   const [eState, eAction, ePending] = useAct(updateEmail);
   const [pState, pAction, pPending] = useAct(updatePassword);
 
+  const avatarRef = useRef<HTMLInputElement>(null);
+  const [prepping, setPrepping] = useState(false);
+  const [prepError, setPrepError] = useState<string | null>(null);
+
+  async function submitAvatar(e: React.FormEvent) {
+    e.preventDefault();
+    setPrepError(null);
+    const file = avatarRef.current?.files?.[0];
+    const fd = new FormData();
+    if (!file) {
+      aAction(fd);
+      return;
+    }
+    setPrepping(true);
+    try {
+      const resized = await downscaleImage(file);
+      fd.append("avatar", resized, "avatar.webp");
+    } catch {
+      setPrepError("Couldn't process that image. Try a different one.");
+      setPrepping(false);
+      return;
+    }
+    setPrepping(false);
+    aAction(fd);
+  }
+
   const box = "rounded-lg border p-5";
   const input = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
   const btn =
@@ -42,13 +69,28 @@ export function ProfileSettings({
 
   return (
     <div className="space-y-6">
-      <form action={aAction} className={box}>
+      <form onSubmit={submitAvatar} className={box}>
         <h2 className="font-semibold mb-2">Profile picture</h2>
-        <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" className="text-sm" />
+        <input
+          ref={avatarRef}
+          type="file"
+          name="avatar"
+          accept="image/png,image/jpeg,image/webp"
+          className="text-sm"
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Large images are automatically resized and compressed.
+        </p>
         <div className="mt-3">
-          <button className={btn} disabled={aPending}>{aPending ? "Uploading…" : "Upload"}</button>
+          <button className={btn} disabled={aPending || prepping}>
+            {prepping ? "Processing…" : aPending ? "Uploading…" : "Upload"}
+          </button>
         </div>
-        <Msg s={aState} />
+        {prepError ? (
+          <p className="text-sm text-red-600 mt-1">{prepError}</p>
+        ) : (
+          <Msg s={aState} />
+        )}
       </form>
 
       <form action={uAction} className={box}>
