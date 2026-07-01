@@ -1,11 +1,14 @@
 import type { NextConfig } from "next";
 
-const supabaseUrl = "https://vspsakcetjfegbpgalap.supabase.co";
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://vspsakcetjfegbpgalap.supabase.co";
+const supabaseWs = supabaseUrl.replace(/^https/, "wss");
 
 const contentSecurityPolicy = [
   "default-src 'self'",
   `img-src 'self' ${supabaseUrl} data: blob:`,
-  `connect-src 'self' ${supabaseUrl} wss://vspsakcetjfegbpgalap.supabase.co`,
+  `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
   // Next.js injects inline bootstrap scripts/styles, and dev mode needs eval.
   // Keep CSP report-only until violations are clean; future hardening should move to nonces.
   "style-src 'self' 'unsafe-inline'",

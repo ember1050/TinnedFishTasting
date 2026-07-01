@@ -17,6 +17,7 @@ these date sections can be rolled up into versioned releases.
 
 ### Changed
 - Tasting host view: participant names are now clickable links to their profiles (in both the participants list and the guesses panel), and the guessing panel now shows each participant's score, the backup guess's brand, and whether the first or backup guess earned the points (first = 2 pts, backup = 1 pt).
+- The Content-Security-Policy Supabase origin is now derived from `NEXT_PUBLIC_SUPABASE_URL` instead of being hardcoded, so staging and production each whitelist their own project.
 
 ## 2026-06-29
 
