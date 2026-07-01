@@ -15,7 +15,7 @@ export default function AdminFishEditPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
       <Link
-        href="/admin/fish"
+        href="/fish"
         className="text-sm text-blue-600 hover:underline mb-4 inline-block"
       >
         ← Back to fish list
@@ -228,7 +228,7 @@ export default function AdminFishEditPage() {
             {pending ? "Saving..." : "Add Fish"}
           </button>
           <Link
-            href="/admin/fish"
+            href="/fish"
             className="rounded-md px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
           >
             Cancel

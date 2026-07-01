@@ -76,13 +76,6 @@ export function ProfileMenu({ displayName, isAdmin = false }: ProfileMenuProps) 
                 Admin
               </p>
               <Link
-                href="/admin/fish"
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => setIsOpen(false)}
-              >
-                Manage Fish
-              </Link>
-              <Link
                 href="/admin/feedback"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => setIsOpen(false)}

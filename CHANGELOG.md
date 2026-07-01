@@ -12,6 +12,9 @@ these date sections can be rolled up into versioned releases.
 ### Added
 - Profile pictures are now automatically downscaled (max 512px) and compressed to WebP in the browser before upload, so large photos no longer fail or waste storage.
 
+### Removed
+- The dedicated "Manage Fish" admin tab. Fish management stays available through the admin-only inline "Add Fish" (fish list) and "Edit" (fish detail) controls.
+
 ## 2026-06-29
 
 ### Added
