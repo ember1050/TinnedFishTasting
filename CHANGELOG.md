@@ -15,6 +15,9 @@ these date sections can be rolled up into versioned releases.
 ### Removed
 - The dedicated "Manage Fish" admin tab. Fish management stays available through the admin-only inline "Add Fish" (fish list) and "Edit" (fish detail) controls.
 
+### Changed
+- Tasting host view: participant names are now clickable links to their profiles (in both the participants list and the guesses panel), and the guessing panel now shows each participant's score, the backup guess's brand, and whether the first or backup guess earned the points (first = 2 pts, backup = 1 pt).
+
 ## 2026-06-29
 
 ### Added

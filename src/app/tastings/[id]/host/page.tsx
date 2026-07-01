@@ -89,6 +89,9 @@ export default async function HostControlPage({
     primary_guess: string | null;
     primary_brand: string | null;
     alternate_guess: string | null;
+    alternate_brand: string | null;
+    primary_correct: boolean | null;
+    alternate_correct: boolean | null;
     correct: boolean | null;
   }[] = [];
   if (showGuesses) {
@@ -97,11 +100,18 @@ export default async function HostControlPage({
     });
     guesses = (g as typeof guesses) ?? [];
   }
-  const guessesByUser = new Map<string, typeof guesses>();
+  const guessesByUser = new Map<
+    string,
+    { display_name: string; rows: typeof guesses }
+  >();
   for (const row of guesses) {
-    const arr = guessesByUser.get(row.display_name) ?? [];
-    arr.push(row);
-    guessesByUser.set(row.display_name, arr);
+    const entry =
+      guessesByUser.get(row.user_id) ?? {
+        display_name: row.display_name,
+        rows: [],
+      };
+    entry.rows.push(row);
+    guessesByUser.set(row.user_id, entry);
   }
 
   return (
@@ -205,7 +215,12 @@ export default async function HostControlPage({
                 key={r.user_id}
                 className="flex items-center justify-between px-4 py-2 text-sm"
               >
-                <span className="font-medium">{r.display_name}</span>
+                <Link
+                  href={`/users/${r.user_id}`}
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  {r.display_name}
+                </Link>
                 <span className="text-gray-500">
                   {showScored && `${r.scored}/${fish.length} scored`}
                   {showGuessed &&
@@ -223,56 +238,86 @@ export default async function HostControlPage({
       {/* Participant guesses (host-only) */}
       {showGuesses && (
         <section className="mt-8">
-          <h2 className="text-lg font-semibold mb-3">Guesses</h2>
+          <h2 className="text-lg font-semibold mb-1">Guesses</h2>
+          <p className="text-xs text-gray-400 mb-3">
+            Correct first guess = 2 pts · correct backup guess = 1 pt.
+          </p>
           {guessesByUser.size === 0 ? (
             <p className="text-sm text-gray-400">No guesses submitted yet.</p>
           ) : (
             <div className="space-y-4">
-              {[...guessesByUser.entries()].map(([name, list]) => (
-                <div key={name} className="rounded-lg border">
-                  <div className="px-4 py-2 border-b bg-gray-50 text-sm font-medium">
-                    {name}
-                  </div>
-                  <div className="divide-y">
-                    {list
-                      .sort((a, b) => a.blind_number - b.blind_number)
-                      .map((row) => (
-                        <div
-                          key={row.blind_number}
-                          className="flex items-center gap-3 px-4 py-2 text-sm"
+              {[...guessesByUser.entries()].map(
+                ([userId, { display_name, rows: list }]) => {
+                  const sorted = [...list].sort(
+                    (a, b) => a.blind_number - b.blind_number
+                  );
+                  const score = sorted.reduce(
+                    (s, r) =>
+                      s + (r.primary_correct ? 2 : 0) + (r.alternate_correct ? 1 : 0),
+                    0
+                  );
+                  const correctCount = sorted.filter(
+                    (r) => r.primary_correct || r.alternate_correct
+                  ).length;
+                  return (
+                    <div key={userId} className="rounded-lg border">
+                      <div className="flex items-center justify-between border-b bg-gray-50 px-4 py-2 text-sm">
+                        <Link
+                          href={`/users/${userId}`}
+                          className="font-medium text-blue-600 hover:underline"
                         >
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
-                            {row.blind_number}
-                          </span>
-                          <span className="font-medium">
-                            {row.primary_guess ?? "—"}
-                          </span>
-                          {row.primary_brand && (
-                            <span className="text-gray-400">
-                              {row.primary_brand}
+                          {display_name}
+                        </Link>
+                        <span className="text-xs text-gray-500">
+                          {correctCount}/{fish.length} correct · {score} pts
+                        </span>
+                      </div>
+                      <div className="divide-y">
+                        {sorted.map((row) => (
+                          <div
+                            key={row.blind_number}
+                            className="flex items-center gap-3 px-4 py-2 text-sm"
+                          >
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
+                              {row.blind_number}
                             </span>
-                          )}
-                          {row.alternate_guess && (
-                            <span className="text-gray-400">
-                              (backup: {row.alternate_guess})
+                            <span className="font-medium">
+                              {row.primary_guess ?? "—"}
                             </span>
-                          )}
-                          {row.correct !== null && (
-                            <span
-                              className={
-                                row.correct
-                                  ? "ml-auto text-green-600"
-                                  : "ml-auto text-red-500"
-                              }
-                            >
-                              {row.correct ? "✓" : "✗"}
+                            {row.primary_brand && (
+                              <span className="text-gray-400">
+                                {row.primary_brand}
+                              </span>
+                            )}
+                            {row.alternate_guess && (
+                              <span className="text-gray-400">
+                                (backup: {row.alternate_guess}
+                                {row.alternate_brand
+                                  ? ` · ${row.alternate_brand}`
+                                  : ""}
+                                )
+                              </span>
+                            )}
+                            <span className="ml-auto whitespace-nowrap">
+                              {row.primary_correct ? (
+                                <span className="font-medium text-green-600">
+                                  ✓ first (+2)
+                                </span>
+                              ) : row.alternate_correct ? (
+                                <span className="font-medium text-green-600">
+                                  ✓ backup (+1)
+                                </span>
+                              ) : (
+                                <span className="text-red-500">✗</span>
+                              )}
                             </span>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
             </div>
           )}
         </section>
