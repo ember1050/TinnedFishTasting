@@ -9,6 +9,10 @@ these date sections can be rolled up into versioned releases.
 
 ## 2026-07-13
 
+### Added
+- Duplicate protection for fish: a fish is now uniquely identified by brand + name (case-insensitive) + salt level, enforced by a database unique index and a friendly "already exists" message when adding or editing. (Salt level is part of the identity because salted / low-sodium / no-salt variants share a name but are distinct products.)
+- Duplicate protection for usernames at sign-up: a taken username now shows a clear "That username is taken" message instead of a raw database error. (Usernames were already enforced unique in the database and in the change-username flow.)
+
 ### Fixed
 - Adding or editing a fish with a larger image (roughly over 1 MB) failed with an error. Fish photos are now downscaled (max 1024px) and compressed to WebP in the browser before upload — the same treatment avatars already got — so uploads reliably stay under the Server Action body limit and use far less storage. Also raised the Server Action body limit to 5 MB (it silently defaulted to 1 MB, contradicting the app's own 5 MB image validation).
 

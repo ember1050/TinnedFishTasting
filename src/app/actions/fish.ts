@@ -149,6 +149,39 @@ async function deleteImageIfOrphaned(
   await supabase.storage.from(FISH_IMAGE_BUCKET).remove([path]);
 }
 
+const DUPLICATE_FISH_MESSAGE =
+  "A fish with this brand, name, and salt level already exists.";
+
+/** Escape LIKE/ILIKE wildcards so brand/name match literally (case-insensitive). */
+function escapeLike(value: string): string {
+  return value.replace(/([\\%_])/g, "\\$1");
+}
+
+/**
+ * Returns true if another fish already has the same identity
+ * (brand + name case-insensitive + salt_level). `excludeId` skips the row being
+ * edited. Mirrors the DB unique index in migration 022 for a friendly message
+ * before we touch storage; the index remains the race-safe source of truth.
+ */
+async function fishDuplicateExists(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  brand: string,
+  name: string,
+  saltLevel: string,
+  excludeId?: string
+): Promise<boolean> {
+  let query = supabase
+    .from("fish")
+    .select("id")
+    .ilike("brand", escapeLike(brand))
+    .ilike("name", escapeLike(name))
+    .eq("salt_level", saltLevel)
+    .limit(1);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data } = await query;
+  return (data?.length ?? 0) > 0;
+}
+
 export async function createFish(formData: FormData) {
   const supabase = await createClient();
 
@@ -171,6 +204,18 @@ export async function createFish(formData: FormData) {
   });
   if (!parsed.ok) return { error: parsed.error };
 
+  // Reject duplicates up front (before uploading an image) for a clean message.
+  if (
+    await fishDuplicateExists(
+      supabase,
+      parsed.data.brand,
+      parsed.data.name,
+      parsed.data.salt_level
+    )
+  ) {
+    return { error: DUPLICATE_FISH_MESSAGE };
+  }
+
   // Upload image first (content-addressed + deduplicated), then store its URL.
   const imageFile = formData.get("image") as File | null;
   let image_url: string | null = null;
@@ -190,7 +235,11 @@ export async function createFish(formData: FormData) {
     const { error } = await supabase
       .from("fish")
       .insert({ ...parsed.data, image_url });
-    if (error) return { error: error.message };
+    if (error) {
+      // Race-safe backstop: the unique index (migration 022) is the guarantee.
+      if (error.code === "23505") return { error: DUPLICATE_FISH_MESSAGE };
+      return { error: error.message };
+    }
   } catch {
     return { error: "Couldn't reach the server. Please try again." };
   }
@@ -219,6 +268,19 @@ export async function updateFish(fishId: string, formData: FormData) {
     sourcing_notes: str(formData, "sourcing_notes"),
   });
   if (!parsed.ok) return { error: parsed.error };
+
+  // Reject collisions with a *different* fish up front (before any upload).
+  if (
+    await fishDuplicateExists(
+      supabase,
+      parsed.data.brand,
+      parsed.data.name,
+      parsed.data.salt_level,
+      fishId
+    )
+  ) {
+    return { error: DUPLICATE_FISH_MESSAGE };
+  }
 
   // Capture the current image so we can clean it up if it gets replaced.
   const { data: existing } = await supabase
@@ -252,7 +314,10 @@ export async function updateFish(fishId: string, formData: FormData) {
         ...(image_url ? { image_url } : {}),
       })
       .eq("id", fishId);
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.code === "23505") return { error: DUPLICATE_FISH_MESSAGE };
+      return { error: error.message };
+    }
   } catch {
     return { error: "Couldn't reach the server. Please try again." };
   }

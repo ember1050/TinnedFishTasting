@@ -34,13 +34,32 @@ export async function signup(formData: FormData) {
   if (!parsed.ok) return { error: parsed.error };
 
   const supabase = await createClient();
+
+  // Usernames are unique (case-insensitive, enforced by a DB index). Check up
+  // front so a taken name gets a clean message instead of a raw DB error.
+  const { data: taken } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("display_name", parsed.data.name.replace(/([\\%_])/g, "\\$1"))
+    .limit(1);
+  if (taken && taken.length > 0) {
+    return { error: "That username is taken. Please choose another." };
+  }
+
   try {
     const { error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: { data: { display_name: parsed.data.name } },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      // The profile-creation trigger enforces uniqueness; map its failure
+      // (in case of a race with the pre-check) to a friendly message.
+      if (/duplicate|unique|already|saving new user/i.test(error.message)) {
+        return { error: "That username is taken. Please choose another." };
+      }
+      return { error: error.message };
+    }
   } catch {
     return { error: "Couldn't reach the server. Please try again." };
   }
