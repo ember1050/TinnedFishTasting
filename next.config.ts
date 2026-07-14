@@ -20,7 +20,14 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Product images are downscaled in the browser before upload, but raise the
+  // Server Action body limit above the 1 MB default as a safety margin (the
+  // app's own image validation already allows up to 5 MB).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
+  },
   async headers() {
     return [
       {

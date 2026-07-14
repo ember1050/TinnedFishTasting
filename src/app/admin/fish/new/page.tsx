@@ -3,10 +3,22 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { createFish } from "@/app/actions/fish";
+import { downscaleImage } from "@/lib/image-client";
 
 export default function AdminFishEditPage() {
   const [state, formAction, pending] = useActionState(
     async (_prev: { error?: string } | undefined, formData: FormData) => {
+      // Shrink the image in the browser first: product photos routinely exceed
+      // the 1 MB Server Action body limit, and this also keeps storage small.
+      const img = formData.get("image");
+      if (img instanceof File && img.size > 0) {
+        try {
+          const resized = await downscaleImage(img, 1024, 0.85);
+          formData.set("image", resized, "image.webp");
+        } catch {
+          return { error: "Couldn't process that image. Try a different one." };
+        }
+      }
       return await createFish(formData);
     },
     undefined

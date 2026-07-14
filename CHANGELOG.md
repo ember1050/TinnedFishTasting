@@ -7,6 +7,11 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-13
+
+### Fixed
+- Adding or editing a fish with a larger image (roughly over 1 MB) failed with an error. Fish photos are now downscaled (max 1024px) and compressed to WebP in the browser before upload — the same treatment avatars already got — so uploads reliably stay under the Server Action body limit and use far less storage. Also raised the Server Action body limit to 5 MB (it silently defaulted to 1 MB, contradicting the app's own 5 MB image validation).
+
 ## 2026-07-01
 
 ### Added
