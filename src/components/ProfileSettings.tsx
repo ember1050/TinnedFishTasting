@@ -95,7 +95,10 @@ export function ProfileSettings({
 
       <form action={uAction} className={box}>
         <h2 className="font-semibold mb-2">Username</h2>
-        <input name="display_name" defaultValue={displayName} className={input} />
+        <input name="display_name" defaultValue={displayName} minLength={3} maxLength={30} className={input} />
+        <p className="mt-1 text-xs text-gray-400">
+          3–30 characters: letters, numbers, spaces, and underscores.
+        </p>
         <div className="mt-3"><button className={btn} disabled={uPending}>{uPending ? "Saving…" : "Save username"}</button></div>
         <Msg s={uState} />
       </form>

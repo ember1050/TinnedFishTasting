@@ -51,14 +51,25 @@ const optionalText = (max: number) =>
     .transform((v) => (v ? v : null));
 
 // ---- Auth ----
+
+/**
+ * Username / display name rules — shared by sign-up and the change-username
+ * flow so they can never drift apart. Keep in sync with the DB unique index.
+ */
+export const usernameSchema = z
+  .string()
+  .trim()
+  .min(3, "Username must be at least 3 characters.")
+  .max(30, "Username must be 30 characters or fewer.")
+  .regex(
+    /^[A-Za-z0-9_ ]+$/,
+    "Letters, numbers, spaces, and underscores only."
+  );
+
 export const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  name: z
-    .string()
-    .trim()
-    .min(1, "Please enter a display name.")
-    .max(100, "Display name is too long."),
+  name: usernameSchema,
 });
 
 export const loginSchema = z.object({

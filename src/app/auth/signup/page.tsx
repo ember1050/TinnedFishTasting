@@ -39,8 +39,13 @@ export default function SignupPage() {
               name="name"
               type="text"
               required
+              minLength={3}
+              maxLength={30}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+            <p className="mt-1 text-xs text-gray-400">
+              3–30 characters: letters, numbers, spaces, and underscores.
+            </p>
           </div>
           <div>
             <label

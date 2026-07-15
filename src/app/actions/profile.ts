@@ -2,19 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { usernameSchema } from "@/lib/validation";
 import { z } from "zod";
 
 function str(fd: FormData, k: string): string {
   const v = fd.get(k);
   return typeof v === "string" ? v : "";
 }
-
-const usernameSchema = z
-  .string()
-  .trim()
-  .min(3, "Username must be at least 3 characters.")
-  .max(30, "Username is too long.")
-  .regex(/^[A-Za-z0-9_ ]+$/, "Letters, numbers, spaces, and underscores only.");
 
 export async function updateUsername(formData: FormData) {
   const supabase = await createClient();
