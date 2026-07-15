@@ -127,6 +127,7 @@ export default async function ResultsPage({
                     >
                       {correct.name}
                     </Link>
+                    <span className="text-gray-400">{correct.brand}</span>
                   </span>
                   <span>
                     {gotPrimary ? (

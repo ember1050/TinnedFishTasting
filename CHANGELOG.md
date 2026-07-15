@@ -7,6 +7,11 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-14
+
+### Changed
+- Fish now show their brand alongside the name everywhere a review lists a fish — on your own profile, on public profiles, and in a tasting's personal report card. Many tinned fish share a name, so the brand is often the only way to tell them apart. (Other listings already showed the brand.)
+
 ## 2026-07-13
 
 ### Added

@@ -20,7 +20,7 @@ export default async function PublicProfilePage({
 
   const { data: reviews, count } = await supabase
     .from("reviews")
-    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name)", {
+    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name, brand)", {
       count: "exact",
     })
     .eq("user_id", id)
@@ -57,15 +57,24 @@ export default async function PublicProfilePage({
       ) : (
         <div className="border rounded-lg divide-y">
           {reviews.map((r) => {
-            const fish = r.fish as unknown as { id: string; name: string } | null;
+            const fish = r.fish as unknown as {
+              id: string;
+              name: string;
+              brand: string;
+            } | null;
             return (
               <div key={r.id} className="flex items-center justify-between px-4 py-3">
-                <Link
-                  href={`/fish/${fish?.id ?? ""}`}
-                  className="text-sm font-medium text-blue-600 hover:underline"
-                >
-                  {fish?.name ?? "Unknown fish"}
-                </Link>
+                <div>
+                  <Link
+                    href={`/fish/${fish?.id ?? ""}`}
+                    className="text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    {fish?.name ?? "Unknown fish"}
+                  </Link>
+                  {fish?.brand && (
+                    <p className="text-xs text-gray-500">{fish.brand}</p>
+                  )}
+                </div>
                 <span className="text-sm font-bold">
                   {r.overall_score}
                   <span className="text-gray-400">/10</span>

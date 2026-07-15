@@ -31,7 +31,7 @@ export default async function ProfilePage({
   // Fetch user's reviews with fish name (paginated)
   const { data: reviews, count: reviewTotal } = await supabase
     .from("reviews")
-    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name)", {
+    .select("id, overall_score, is_from_tasting, created_at, fish:fish_id(id, name, brand)", {
       count: "exact",
     })
     .eq("user_id", user.id)
@@ -136,6 +136,7 @@ export default async function ProfilePage({
                 const fish = review.fish as unknown as {
                   id: string;
                   name: string;
+                  brand: string;
                 } | null;
                 return (
                   <div
@@ -149,6 +150,9 @@ export default async function ProfilePage({
                       >
                         {fish?.name ?? "Unknown fish"}
                       </Link>
+                      {fish?.brand && (
+                        <p className="text-xs text-gray-500">{fish.brand}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-gray-400">
                           {new Date(review.created_at).toLocaleDateString()}
