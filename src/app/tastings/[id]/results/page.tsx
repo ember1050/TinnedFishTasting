@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTastingContext, getTastingFish, getMyBlindResponses } from "@/lib/tastings";
+import { AchievementPopup } from "@/components/AchievementPopup";
 
 export default async function ResultsPage({
   params,
@@ -51,6 +52,20 @@ export default async function ResultsPage({
 
   // Group ranking — average published overall score per fish from this tasting.
   const supabase = await createClient();
+
+  // Did the viewer earn Perfect Taste in this tasting? (source of truth = DB)
+  let earnedPerfectTaste = false;
+  if (userId) {
+    const { data: ach } = await supabase
+      .from("user_achievements")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("kind", "perfect_taste")
+      .eq("tasting_id", id)
+      .maybeSingle();
+    earnedPerfectTaste = !!ach;
+  }
+
   const { data: reviews } = await supabase
     .from("reviews")
     .select("fish_id, overall_score")
@@ -78,6 +93,11 @@ export default async function ResultsPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
+      <AchievementPopup
+        tastingId={id}
+        kind="perfect_taste"
+        earned={earnedPerfectTaste}
+      />
       <Link
         href={`/tastings/${id}`}
         className="text-sm text-blue-600 hover:underline mb-4 inline-block"

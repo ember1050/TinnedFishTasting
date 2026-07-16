@@ -378,6 +378,16 @@ export async function publishResults(tastingId: string) {
       p_tasting: tastingId,
     });
     if (error) return { error: error.message };
+
+    // Award tasting-derived badges (e.g. Perfect Taste). Non-fatal: a failure
+    // here shouldn't block publishing, which already succeeded above.
+    const { error: awardError } = await supabase.rpc(
+      "award_tasting_achievements",
+      { p_tasting: tastingId }
+    );
+    if (awardError) {
+      console.error("Achievement award failed:", awardError.message);
+    }
   } catch {
     return { error: "Couldn't reach the server. Please try again." };
   }

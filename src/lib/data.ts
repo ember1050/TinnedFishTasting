@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Fish, FishWithStats } from "@/lib/types";
+import { getBadgesForUsers } from "@/lib/badges";
 
 /**
  * Data access layer — queries Supabase for live data.
@@ -108,6 +109,11 @@ export async function getReviewsForFish(
     if (v.user_id === myId) mine.set(v.review_id, v.value);
   }
 
+  // Badges for the review authors (single batched query, no N+1).
+  const badgesByUser = await getBadgesForUsers(
+    data.map((r) => r.user_id as string)
+  );
+
   const enriched = data.map((r) => ({
     ...r,
     user_name:
@@ -115,6 +121,7 @@ export async function getReviewsForFish(
       "Anonymous",
     net_votes: net.get(r.id) ?? 0,
     my_vote: mine.get(r.id) ?? 0,
+    author_badges: badgesByUser.get(r.user_id as string) ?? [],
   }));
 
   if (sort === "popular") {

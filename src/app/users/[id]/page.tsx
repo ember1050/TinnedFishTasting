@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getBadgesForUser } from "@/lib/badges";
+import { BadgeShelf } from "@/components/BadgeShelf";
 
 export default async function PublicProfilePage({
   params,
@@ -32,6 +34,8 @@ export default async function PublicProfilePage({
     year: "numeric",
   });
 
+  const badges = await getBadgesForUser(id);
+
   return (
     <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center gap-4 mb-8">
@@ -44,7 +48,10 @@ export default async function PublicProfilePage({
           )}
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{profile.display_name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">{profile.display_name}</h1>
+            <BadgeShelf badges={badges} size={26} />
+          </div>
           <p className="text-sm text-gray-500">
             {count ?? 0} review{count !== 1 && "s"} • Member since {memberSince}
           </p>

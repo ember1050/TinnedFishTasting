@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMyTastings, STATE_LABELS } from "@/lib/tastings";
+import { getBadgesForUser } from "@/lib/badges";
+import { BadgeShelf } from "@/components/BadgeShelf";
 
 export default async function ProfilePage({
   searchParams,
@@ -45,6 +47,7 @@ export default async function ProfilePage({
     .eq("user_id", user.id);
 
   const myTastings = await getMyTastings(user.id);
+  const badges = await getBadgesForUser(user.id);
 
   const reviewCount = reviewTotal ?? 0;
   const totalReviewPages = Math.max(1, Math.ceil(reviewCount / pageSize));
@@ -83,6 +86,11 @@ export default async function ProfilePage({
             <p className="text-xs text-gray-400 mt-1">
               Member since {memberSince}
             </p>
+            {badges.length > 0 && (
+              <div className="mt-3">
+                <BadgeShelf badges={badges} size={30} />
+              </div>
+            )}
             {profile?.is_admin && (
               <span className="inline-block mt-2 text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
                 Admin

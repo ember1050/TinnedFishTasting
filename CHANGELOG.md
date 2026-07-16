@@ -7,6 +7,11 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-16
+
+### Added
+- Achievements & profile badges. The first badge, **Perfect Taste**, is awarded automatically when you match every fish in a blind tasting correctly on your first guess. When results are published you get a "You have perfect taste!" popup, and the badge appears next to your name — on your profile, on public profiles, and beside your name on reviews. Hover or tap a badge to see its name and what it means. Earning the same badge in multiple tastings stacks it with a small count. Existing perfect scores from past published tastings were awarded retroactively.
+
 ## 2026-07-15
 
 ### Fixed

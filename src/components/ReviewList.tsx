@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ReviewVotes } from "./ReviewVotes";
+import { BadgeShelf, type EarnedBadge } from "./BadgeShelf";
 
 type Review = {
   id: string;
@@ -17,6 +18,7 @@ type Review = {
   value_score?: number | null;
   net_votes?: number;
   my_vote?: number;
+  author_badges?: EarnedBadge[];
 };
 
 const PAGE_SIZE = 5;
@@ -94,6 +96,9 @@ export function ReviewList({
                 >
                   {review.user_name}
                 </Link>
+                {review.author_badges && review.author_badges.length > 0 && (
+                  <BadgeShelf badges={review.author_badges} size={18} />
+                )}
                 {review.is_from_tasting && (
                   <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                     ✓ Verified Tasting
