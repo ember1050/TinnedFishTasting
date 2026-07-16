@@ -66,9 +66,14 @@ export const usernameSchema = z
     "Letters, numbers, spaces, and underscores only."
   );
 
+/** Password minimum, shared by sign-up and the recovery-reset flow. */
+export const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters.");
+
 export const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+  password: passwordSchema,
   name: usernameSchema,
 });
 

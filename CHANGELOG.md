@@ -7,6 +7,11 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-15
+
+### Fixed
+- The "Forgot password?" flow now works end-to-end. Two bugs were preventing it: the reset screen still demanded your *current* password (which you don't have when you've forgotten it), and the emailed recovery link never actually signed you in. Recovery links now establish a session via a new `/auth/callback` handler, and the reset screen asks only for a new password plus confirmation. (The logged-in "change password" screen still requires your current password, as before.)
+
 ## 2026-07-14
 
 ### Changed

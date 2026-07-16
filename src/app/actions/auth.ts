@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { parse, signupSchema, loginSchema, resetSchema } from "@/lib/validation";
+import { parse, signupSchema, loginSchema, resetSchema, passwordSchema } from "@/lib/validation";
 
 /** Read a form field as a string (empty string when missing or a file). */
 function str(formData: FormData, key: string): string {
@@ -113,7 +113,7 @@ export async function resetPassword(formData: FormData) {
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(
       parsed.data.email,
-      { redirectTo: `${origin}/auth/reset/confirm` }
+      { redirectTo: `${origin}/auth/callback?next=/auth/reset/confirm` }
     );
     if (error) return { error: error.message };
   } catch {
@@ -121,4 +121,37 @@ export async function resetPassword(formData: FormData) {
   }
 
   return { success: "Check your email for a reset link." };
+}
+
+/**
+ * Set a new password from a recovery link. Unlike the logged-in "change
+ * password" flow (which requires the current password), this trusts the
+ * recovery session established by the emailed link, so it only needs the new
+ * password plus a confirmation. Requires a valid session or it refuses.
+ */
+export async function setRecoveryPassword(formData: FormData) {
+  const password = str(formData, "password");
+  const confirm = str(formData, "confirm_password");
+
+  const parsed = passwordSchema.safeParse(password);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (password !== confirm) return { error: "New passwords don't match." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      error: "This reset link is invalid or has expired. Request a new one.",
+    };
+  }
+
+  try {
+    const { error } = await supabase.auth.updateUser({ password: parsed.data });
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Couldn't reach the server. Please try again." };
+  }
+  return { success: "Password updated. You're signed in." };
 }
