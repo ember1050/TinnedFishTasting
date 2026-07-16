@@ -352,13 +352,24 @@ export async function submitReview(formData: FormData) {
   });
   if (!parsed.ok) return { error: parsed.error };
 
+  // If the user already has a review for this fish that originated from a
+  // tasting, preserve its verified-tasting provenance on edit — tasting them
+  // blind still happened, so re-editing scores/notes shouldn't strip the badge.
+  const { data: existingReview } = await supabase
+    .from("reviews")
+    .select("is_from_tasting, tasting_id")
+    .eq("user_id", user.id)
+    .eq("fish_id", parsed.data.fish_id)
+    .maybeSingle();
+  const fromTasting = existingReview?.is_from_tasting ?? false;
+
   try {
     const { error } = await supabase.from("reviews").upsert(
       {
         user_id: user.id,
         ...parsed.data,
-        is_from_tasting: false,
-        tasting_id: null,
+        is_from_tasting: fromTasting,
+        tasting_id: fromTasting ? existingReview?.tasting_id ?? null : null,
       },
       { onConflict: "user_id,fish_id" }
     );
