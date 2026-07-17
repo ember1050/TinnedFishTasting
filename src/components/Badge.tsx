@@ -68,7 +68,7 @@ export function Badge({
       {open && (
         <span
           role="tooltip"
-          className="absolute left-1/2 top-full z-50 mt-2 w-52 -translate-x-1/2 rounded-md border border-gray-200 bg-white p-3 text-left shadow-lg"
+          className="absolute left-0 top-full z-50 mt-2 w-max max-w-[min(16rem,calc(100vw-2.5rem))] rounded-md border border-gray-200 bg-white p-3 text-left shadow-lg"
         >
           <span className="block text-sm font-semibold text-gray-900">
             {meta.label}

@@ -18,6 +18,7 @@ these date sections can be rolled up into versioned releases.
 
 ### Fixed
 - After submitting your guesses, going back and returning no longer re-enables the Submit button — locked guesses stay locked.
+- Mobile: the achievement badge tooltip no longer runs off the edge of the screen, and the "Tinned Fish Rankings" title in the top bar now fits within its box.
 
 ## 2026-07-16
 

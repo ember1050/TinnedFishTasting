@@ -23,11 +23,14 @@ export async function NavBar() {
 
   return (
     <header className="border-b bg-white sticky top-0 z-50">
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
-        <Link href="/" className="text-xl font-bold tracking-tight">
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-2">
+        <Link
+          href="/"
+          className="min-w-0 truncate text-base sm:text-xl font-bold tracking-tight"
+        >
           🐟 Tinned Fish Rankings
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-6">
           <Link
             href="/fish"
             className="text-sm font-medium text-gray-700 hover:text-gray-900"
