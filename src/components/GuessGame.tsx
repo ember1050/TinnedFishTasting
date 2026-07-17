@@ -3,11 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveGuess, submitGuesses } from "@/app/actions/tasting";
-
-interface Candidate {
-  fish_id: string;
-  label: string;
-}
+import { FishPicker, type FishOption } from "@/components/FishPicker";
 
 interface TinGuess {
   notes: string;
@@ -25,7 +21,7 @@ export function GuessGame({
 }: {
   tastingId: string;
   tins: { blind_number: number; notes: string; primary: string; alternate: string }[];
-  candidates: Candidate[];
+  candidates: FishOption[];
   submitted: boolean;
 }) {
   const router = useRouter();
@@ -108,21 +104,13 @@ export function GuessGame({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   First guess
                 </label>
-                <select
+                <FishPicker
+                  options={candidates}
                   value={g.primary}
+                  exclude={g.alternate}
                   disabled={locked}
-                  onChange={(e) => update(t.blind_number, { primary: e.target.value })}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                >
-                  <option value="">— Select —</option>
-                  {candidates
-                    .filter((c) => c.fish_id !== g.alternate)
-                    .map((c) => (
-                      <option key={c.fish_id} value={c.fish_id}>
-                        {c.label}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(id) => update(t.blind_number, { primary: id })}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -131,23 +119,14 @@ export function GuessGame({
                     (optional)
                   </span>
                 </label>
-                <select
+                <FishPicker
+                  options={candidates}
                   value={g.alternate}
+                  exclude={g.primary}
                   disabled={locked}
-                  onChange={(e) =>
-                    update(t.blind_number, { alternate: e.target.value })
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                >
-                  <option value="">— Select —</option>
-                  {candidates
-                    .filter((c) => c.fish_id !== g.primary)
-                    .map((c) => (
-                      <option key={c.fish_id} value={c.fish_id}>
-                        {c.label}
-                      </option>
-                    ))}
-                </select>
+                  allowClear
+                  onChange={(id) => update(t.blind_number, { alternate: id })}
+                />
               </div>
             </div>
           </div>

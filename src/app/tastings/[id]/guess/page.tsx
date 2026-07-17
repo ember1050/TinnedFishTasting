@@ -54,9 +54,13 @@ export default async function GuessPage({
   const candidates = fish
     .map((f) => ({
       fish_id: f.fish.id,
-      label: `${f.fish.name} — ${f.fish.brand}`,
+      name: f.fish.name,
+      brand: f.fish.brand,
+      image_url: f.fish.image_url,
     }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) =>
+      `${a.name} ${a.brand}`.localeCompare(`${b.name} ${b.brand}`)
+    );
 
   const tins = fish.map((f) => {
     const r = byNumber.get(f.blind_number);

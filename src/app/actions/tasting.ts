@@ -419,6 +419,7 @@ export async function submitGuesses(tastingId: string) {
   }
   revalidatePath(`/tastings/${tastingId}`);
   revalidatePath(`/tastings/${tastingId}/host`);
+  revalidatePath(`/tastings/${tastingId}/guess`);
   return { success: true };
 }
 
@@ -453,5 +454,7 @@ export async function regressTastingState(tastingId: string) {
   }
   revalidatePath(`/tastings/${tastingId}`);
   revalidatePath(`/tastings/${tastingId}/host`);
+  revalidatePath(`/tastings/${tastingId}/guess`);
+  revalidatePath(`/tastings/${tastingId}/blind`);
   return { success: true, state: prev };
 }

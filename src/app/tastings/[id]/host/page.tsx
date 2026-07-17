@@ -9,6 +9,7 @@ import {
 import { TastingRealtime } from "@/components/TastingRealtime";
 import { AdvanceButton } from "@/components/AdvanceButton";
 import { RegressButton } from "@/components/RegressButton";
+import { FishChip } from "@/components/FishChip";
 import type { TastingState } from "@/lib/types";
 
 const FLOW: TastingState[] = [
@@ -191,11 +192,14 @@ export default async function HostControlPage({
               key={tf.blind_number}
               className="flex items-center gap-3 px-4 py-2 text-sm"
             >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white">
                 {tf.blind_number}
               </span>
-              <span className="font-medium">{tf.fish.name}</span>
-              <span className="text-gray-400">{tf.fish.brand}</span>
+              <FishChip
+                name={tf.fish.name}
+                brand={tf.fish.brand}
+                imageUrl={tf.fish.image_url}
+              />
             </div>
           ))}
         </div>
@@ -205,6 +209,11 @@ export default async function HostControlPage({
       <section>
         <h2 className="text-lg font-semibold mb-3">
           Participants ({rows.length})
+          {showGuessed && rows.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              · {rows.filter((r) => r.submitted).length}/{rows.length} submitted
+            </span>
+          )}
         </h2>
         {rows.length === 0 ? (
           <p className="text-sm text-gray-400">No one has joined yet.</p>
@@ -213,7 +222,7 @@ export default async function HostControlPage({
             {rows.map((r) => (
               <div
                 key={r.user_id}
-                className="flex items-center justify-between px-4 py-2 text-sm"
+                className="flex items-center justify-between gap-2 px-4 py-2 text-sm"
               >
                 <Link
                   href={`/users/${r.user_id}`}
@@ -221,12 +230,20 @@ export default async function HostControlPage({
                 >
                   {r.display_name}
                 </Link>
-                <span className="text-gray-500">
+                <span className="flex items-center gap-2 text-gray-500">
                   {showScored && `${r.scored}/${fish.length} scored`}
-                  {showGuessed &&
-                    `${r.guessed}/${fish.length} guessed${
-                      r.submitted ? " · submitted" : ""
-                    }`}
+                  {showGuessed && (
+                    <>
+                      <span>
+                        {r.guessed}/{fish.length} guessed
+                      </span>
+                      {r.submitted && (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          ✓ Submitted
+                        </span>
+                      )}
+                    </>
+                  )}
                   {!showScored && !showGuessed && "—"}
                 </span>
               </div>

@@ -7,6 +7,18 @@ entries are grouped by date rather than version. The format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). When a release process exists,
 these date sections can be rolled up into versioned releases.
 
+## 2026-07-17
+
+### Added
+- Tasting guesses now show fish photos. When picking your first and backup guesses you get a picture + name + brand for each option instead of a text-only dropdown, making near-identically-named tins easy to tell apart. Photos also appear in the results report card, the reveal, and the host's answer key.
+
+### Changed
+- The results report card now shows what **you** guessed (first and backup, with ✓/✗) next to each correct answer, instead of just repeating the correct answers already listed in the reveal.
+- The host view now shows a clear "Submitted" pill per participant and an "N/M submitted" count during guessing, so it's obvious when everyone's ready to advance.
+
+### Fixed
+- After submitting your guesses, going back and returning no longer re-enables the Submit button — locked guesses stay locked.
+
 ## 2026-07-16
 
 ### Added
